@@ -80,13 +80,20 @@ export default async function SiloPageDashboard({
           .orderBy(asc(siloReadings.readAt))
       : [];
 
-  const trendSeries = pageSilos.map((silo) => ({
-    id: silo.id,
-    name: silo.name,
-    points: readings
-      .filter((r) => r.siloId === silo.id)
-      .map((r) => ({ readAt: r.readAt, value: Number(r.value) })),
-  }));
+  const trendSeries = pageSilos.map((silo) => {
+    const capacity = Number(silo.capacity);
+    return {
+      id: silo.id,
+      name: silo.name,
+      // Plotted as percent of the silo's current capacity, not the raw
+      // reading — see the TrendSeries comment in silo-trend-chart.tsx for
+      // why (different silos have different capacities, so raw values
+      // aren't on a comparable scale).
+      points: readings
+        .filter((r) => r.siloId === silo.id)
+        .map((r) => ({ readAt: r.readAt, value: (Number(r.value) / capacity) * 100 })),
+    };
+  });
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-8">

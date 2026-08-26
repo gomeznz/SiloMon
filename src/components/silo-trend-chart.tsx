@@ -1,17 +1,22 @@
 // Hand-rolled SVG line chart — same approach as silo-gauge.tsx. The data
 // (a handful of series, a few hundred points each at most) doesn't warrant
 // pulling in a charting library.
+//
+// Colors are the app's own palette (the -400 shades read well against a
+// dark background) — the same indigo/emerald/amber/red used for buttons and
+// status badges elsewhere, extended with a few more hues from that family
+// rather than an arbitrary rainbow.
 const PALETTE = [
-  "#6366f1", // indigo
-  "#f59e0b", // amber
-  "#10b981", // emerald
-  "#ef4444", // red
-  "#06b6d4", // cyan
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#84cc16", // lime
-  "#f97316", // orange
-  "#14b8a6", // teal
+  "#818cf8", // indigo-400
+  "#34d399", // emerald-400
+  "#fbbf24", // amber-400
+  "#f87171", // red-400
+  "#38bdf8", // sky-400
+  "#a78bfa", // violet-400
+  "#fb7185", // rose-400
+  "#2dd4bf", // teal-400
+  "#fb923c", // orange-400
+  "#a3e635", // lime-400
 ];
 
 const WIDTH = 800;
@@ -23,6 +28,11 @@ const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
 export type TrendSeries = {
   id: number;
   name: string;
+  // Percent of the silo's capacity (0-100), not the raw reading — silos on
+  // the same chart can have wildly different capacities, so plotting raw
+  // values would put them on a scale that's meaningless across silos (and
+  // a capacity edited mid-window would jump the whole axis). Percent keeps
+  // every line on the same, actually comparable, 0-100 scale.
   points: { readAt: Date; value: number }[];
 };
 
@@ -38,13 +48,13 @@ export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
   const maxTime = Math.max(...times);
   const timeSpan = maxTime - minTime || 1;
 
-  const maxValue = Math.max(...allPoints.map((p) => p.value), 1);
+  const MAX_PERCENT = 100;
 
   const x = (t: number) => MARGIN.left + ((t - minTime) / timeSpan) * PLOT_WIDTH;
-  const y = (v: number) => MARGIN.top + PLOT_HEIGHT - (v / maxValue) * PLOT_HEIGHT;
+  const y = (v: number) => MARGIN.top + PLOT_HEIGHT - (v / MAX_PERCENT) * PLOT_HEIGHT;
 
   const Y_TICKS = 4;
-  const yTickValues = Array.from({ length: Y_TICKS + 1 }, (_, i) => (maxValue / Y_TICKS) * i);
+  const yTickValues = Array.from({ length: Y_TICKS + 1 }, (_, i) => (MAX_PERCENT / Y_TICKS) * i);
 
   const X_TICKS = 4;
   const xTickValues = Array.from({ length: X_TICKS + 1 }, (_, i) => minTime + (timeSpan / X_TICKS) * i);
@@ -67,9 +77,9 @@ export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
               y={y(v)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-slate-400 text-[10px]"
+              className="fill-slate-400 text-[10px] dark:fill-slate-500"
             >
-              {Math.round(v).toLocaleString()}
+              {Math.round(v)}%
             </text>
           </g>
         ))}
@@ -80,7 +90,7 @@ export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
             x={x(t)}
             y={HEIGHT - MARGIN.bottom + 16}
             textAnchor="middle"
-            className="fill-slate-400 text-[10px]"
+            className="fill-slate-400 text-[10px] dark:fill-slate-500"
           >
             {new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </text>
