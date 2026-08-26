@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { silos, siloPages } from "@/db/schema";
@@ -193,15 +194,23 @@ export default async function AdminPage({
                     · {page?.name ?? "unknown page"} · {s.host}:{s.port} unit {s.unitId} reg {s.registerAddress}
                   </span>
                 </div>
-                <form action={deleteSiloAction}>
-                  <input type="hidden" name="id" value={s.id} />
-                  <button
-                    type="submit"
-                    className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
+                <div className="flex shrink-0 items-center gap-3">
+                  <Link
+                    href={`/admin/${s.id}`}
+                    className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
                   >
-                    Delete
-                  </button>
-                </form>
+                    Edit
+                  </Link>
+                  <form action={deleteSiloAction}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <button
+                      type="submit"
+                      className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </div>
             );
           })}

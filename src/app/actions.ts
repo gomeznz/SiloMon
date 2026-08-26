@@ -133,6 +133,71 @@ export async function createSiloAction(formData: FormData) {
   redirect("/admin");
 }
 
+const UpdateSiloSchema = CreateSiloSchema.extend({
+  id: z.coerce.number().int().positive(),
+});
+
+export async function updateSiloAction(formData: FormData) {
+  const id = formData.get("id");
+
+  const parsed = UpdateSiloSchema.safeParse({
+    id,
+    pageId: formData.get("pageId"),
+    name: formData.get("name"),
+    host: formData.get("host"),
+    port: formData.get("port") || undefined,
+    unitId: formData.get("unitId") || undefined,
+    registerAddress: formData.get("registerAddress"),
+    dataType: formData.get("dataType"),
+    scale: formData.get("scale") || undefined,
+    capacity: formData.get("capacity"),
+    unit: formData.get("unit") || undefined,
+    lowAlarmPercent: formData.get("lowAlarmPercent") || undefined,
+    highAlarmPercent: formData.get("highAlarmPercent") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirectWithError(`/admin/${id}`, parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+
+  const {
+    pageId,
+    name,
+    host,
+    port,
+    unitId,
+    registerAddress,
+    dataType,
+    scale,
+    capacity,
+    unit,
+    lowAlarmPercent,
+    highAlarmPercent,
+  } = parsed.data;
+
+  await db
+    .update(silos)
+    .set({
+      pageId,
+      name,
+      host,
+      port,
+      unitId,
+      registerAddress,
+      dataType,
+      scale: scale.toFixed(4),
+      capacity: capacity.toFixed(2),
+      unit,
+      lowAlarmPercent: lowAlarmPercent !== undefined ? (lowAlarmPercent / 100).toFixed(3) : null,
+      highAlarmPercent: highAlarmPercent !== undefined ? (highAlarmPercent / 100).toFixed(3) : null,
+    })
+    .where(eq(silos.id, parsed.data.id));
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
 export async function deleteSiloAction(formData: FormData) {
   const { id } = z.object({ id: z.coerce.number().int().positive() }).parse({
     id: formData.get("id"),
