@@ -98,7 +98,7 @@ export default async function SiloPageDashboard({
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">SiloMon</h1>
+        <h1 className="text-2xl font-semibold">{currentPage.name}</h1>
         <Link href="/admin" className={buttonVariants({ variant: "outline", size: "sm" })}>
           Setup
         </Link>
