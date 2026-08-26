@@ -51,6 +51,20 @@ export default async function AdminPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Modbus debugging</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4 pt-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Test TCP or RTU (serial) connectivity to a PLC directly, without configuring a silo.
+          </p>
+          <Link href="/admin/debug" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Open
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Pages</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
