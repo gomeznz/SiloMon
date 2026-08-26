@@ -6,7 +6,7 @@
 // this is reachable from anywhere untrusted.
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
@@ -45,6 +45,39 @@ export async function createSiloPageAction(formData: FormData) {
   }
 
   await db.insert(siloPages).values({ name: parsed.data.name, slug });
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+const UpdateSiloPageSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  name: z.string().trim().min(1, "Enter a page name"),
+});
+
+export async function updateSiloPageAction(formData: FormData) {
+  const id = formData.get("id");
+
+  const parsed = UpdateSiloPageSchema.safeParse({ id, name: formData.get("name") });
+  if (!parsed.success) {
+    redirectWithError(`/admin/pages/${id}`, parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+
+  const slug = slugify(parsed.data.name);
+  if (!slug) {
+    redirectWithError(`/admin/pages/${id}`, "Enter a page name");
+  }
+
+  const existing = await db
+    .select({ id: siloPages.id })
+    .from(siloPages)
+    .where(and(eq(siloPages.slug, slug), ne(siloPages.id, parsed.data.id)));
+  if (existing.length > 0) {
+    redirectWithError(`/admin/pages/${id}`, "A page with that name already exists");
+  }
+
+  await db.update(siloPages).set({ name: parsed.data.name, slug }).where(eq(siloPages.id, parsed.data.id));
 
   revalidatePath("/");
   revalidatePath("/admin");
