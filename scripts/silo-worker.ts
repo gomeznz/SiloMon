@@ -16,27 +16,12 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import ModbusRTU from "modbus-serial";
 import { silos, siloReadings } from "../src/db/schema";
+import { decodeRegisters, registerLength } from "../src/lib/modbus-codec";
 
 const POLL_INTERVAL_MS = Number(process.env.SILO_POLL_INTERVAL_MS ?? 10_000);
 const CONNECT_TIMEOUT_MS = Number(process.env.SILO_CONNECT_TIMEOUT_MS ?? 5_000);
 
 type SiloRow = typeof silos.$inferSelect;
-
-const THIRTY_TWO_BIT_TYPES = new Set(["UINT32", "INT32", "FLOAT32"]);
-
-function decodeRegisters(registers: number[], dataType: SiloRow["dataType"]): number {
-  if (registers.length === 1) {
-    const raw = registers[0];
-    return dataType === "INT16" && raw >= 0x8000 ? raw - 0x10000 : raw;
-  }
-
-  const buf = Buffer.alloc(4);
-  buf.writeUInt16BE(registers[0], 0);
-  buf.writeUInt16BE(registers[1], 2);
-  if (dataType === "FLOAT32") return buf.readFloatBE(0);
-  if (dataType === "INT32") return buf.readInt32BE(0);
-  return buf.readUInt32BE(0);
-}
 
 // One persistent client per host:port, reused across polls and shared by
 // every silo on that gateway — reconnecting every poll is slow and most
@@ -60,7 +45,7 @@ async function pollSilo(db: ReturnType<typeof drizzle>, silo: SiloRow) {
     const client = await getClient(silo.host, silo.port);
     client.setID(silo.unitId);
 
-    const length = THIRTY_TWO_BIT_TYPES.has(silo.dataType) ? 2 : 1;
+    const length = registerLength(silo.dataType);
     const { data } = await client.readHoldingRegisters(silo.registerAddress, length);
     const value = decodeRegisters(data, silo.dataType) * Number(silo.scale);
 

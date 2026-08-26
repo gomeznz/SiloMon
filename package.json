@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "worker": "tsx scripts/silo-worker.ts"
+    "worker": "tsx scripts/silo-worker.ts",
+    "simulator": "tsx scripts/silo-simulator.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
