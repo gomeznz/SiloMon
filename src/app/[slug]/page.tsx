@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { silos, siloPages } from "@/db/schema";
-import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import { SiloGauge, type SiloGaugeStatus } from "@/components/silo-gauge";
 
 // How long a silo can go without a fresh reading before the dashboard shows
@@ -63,23 +63,18 @@ export default async function SiloPageDashboard({
     <div className="mx-auto w-full max-w-6xl space-y-6 p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">SiloMon</h1>
-        <Link href="/admin" className="text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100">
+        <Link href="/admin" className={buttonVariants({ variant: "outline", size: "sm" })}>
           Setup
         </Link>
       </div>
 
       {allPages.length > 1 && (
-        <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex flex-wrap gap-2">
           {allPages.map((p) => (
             <Link
               key={p.id}
               href={`/${p.slug}`}
-              className={cn(
-                "border-b-2 px-3 py-2 text-sm font-medium",
-                p.slug === slug
-                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                  : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
-              )}
+              className={buttonVariants({ variant: p.slug === slug ? "default" : "outline", size: "sm" })}
             >
               {p.name}
             </Link>

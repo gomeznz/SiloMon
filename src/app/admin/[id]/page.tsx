@@ -38,9 +38,14 @@ export default async function EditSiloPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Edit silo</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{silo.name}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Edit silo</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{silo.name}</p>
+        </div>
+        <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          Dashboard
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

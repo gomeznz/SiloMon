@@ -8,7 +8,7 @@ import {
   createSiloAction,
   deleteSiloAction,
 } from "../actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -34,12 +34,17 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">SiloMon — setup</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Configure dashboard pages and the silos on each, including where the
-          Modbus-TCP worker (scripts/silo-worker.ts) reads their level from.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">SiloMon — setup</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Configure dashboard pages and the silos on each, including where the
+            Modbus-TCP worker (scripts/silo-worker.ts) reads their level from.
+          </p>
+        </div>
+        <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          Dashboard
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
