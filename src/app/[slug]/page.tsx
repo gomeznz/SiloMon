@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { silos, siloPages } from "@/db/schema";
+import { silos, siloPages, siloReadings } from "@/db/schema";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SiloGauge, type SiloGaugeStatus } from "@/components/silo-gauge";
+import { SiloTrendChart } from "@/components/silo-trend-chart";
 
 // How long a silo can go without a fresh reading before the dashboard shows
 // it as offline rather than trusting the last value. The worker (see
@@ -12,9 +14,18 @@ import { SiloGauge, type SiloGaugeStatus } from "@/components/silo-gauge";
 // tune both together if the poll interval changes.
 const STALE_AFTER_MS = 2 * 60 * 1000;
 
+// How far back the trend chart looks. Kept short by default since the
+// worker polls every few seconds — a longer window would mean fetching (and
+// rendering) thousands of points per silo.
+const TREND_WINDOW_MS = 3 * 60 * 60 * 1000;
+
 // Reads live DB state on every request — must not be statically prerendered
 // at build time (the DB isn't reachable from the build environment anyway).
 export const dynamic = "force-dynamic";
+
+function trendCutoff(): Date {
+  return new Date(Date.now() - TREND_WINDOW_MS);
+}
 
 function statusFor(silo: {
   currentValue: string | null;
@@ -58,6 +69,24 @@ export default async function SiloPageDashboard({
     .from(silos)
     .where(eq(silos.pageId, currentPage.id))
     .orderBy(asc(silos.sortOrder), asc(silos.id));
+
+  const siloIds = pageSilos.map((s) => s.id);
+  const readings =
+    siloIds.length > 0
+      ? await db
+          .select({ siloId: siloReadings.siloId, value: siloReadings.value, readAt: siloReadings.readAt })
+          .from(siloReadings)
+          .where(and(inArray(siloReadings.siloId, siloIds), gte(siloReadings.readAt, trendCutoff())))
+          .orderBy(asc(siloReadings.readAt))
+      : [];
+
+  const trendSeries = pageSilos.map((silo) => ({
+    id: silo.id,
+    name: silo.name,
+    points: readings
+      .filter((r) => r.siloId === silo.id)
+      .map((r) => ({ readAt: r.readAt, value: Number(r.value) })),
+  }));
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-8">
@@ -105,6 +134,17 @@ export default async function SiloPageDashboard({
             );
           })}
         </div>
+      )}
+
+      {pageSilos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Level trend</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <SiloTrendChart series={trendSeries} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );
