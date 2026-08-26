@@ -168,7 +168,7 @@ export default async function AdminPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="lowAlarmPercent">Low alarm (% of capacity, optional)</Label>
                 <Input id="lowAlarmPercent" name="lowAlarmPercent" type="number" min={0} max={100} />
@@ -176,6 +176,10 @@ export default async function AdminPage({
               <div className="space-y-1.5">
                 <Label htmlFor="highAlarmPercent">High alarm (% of capacity, optional)</Label>
                 <Input id="highAlarmPercent" name="highAlarmPercent" type="number" min={0} max={100} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="criticalPercent">Critical level (% of capacity, optional)</Label>
+                <Input id="criticalPercent" name="criticalPercent" type="number" min={0} max={100} />
               </div>
             </div>
 

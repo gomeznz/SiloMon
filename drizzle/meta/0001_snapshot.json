@@ -1,0 +1,286 @@
+{
+  "id": "0cba879b-819c-4419-92b3-a86953b35abb",
+  "prevId": "0b50491a-b041-442d-9302-5c1a4787a5d2",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.silo_pages": {
+      "name": "silo_pages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "silo_pages_slug_unique": {
+          "name": "silo_pages_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.silo_readings": {
+      "name": "silo_readings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "silo_id": {
+          "name": "silo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "silo_readings_silo_id_silos_id_fk": {
+          "name": "silo_readings_silo_id_silos_id_fk",
+          "tableFrom": "silo_readings",
+          "tableTo": "silos",
+          "columnsFrom": [
+            "silo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.silos": {
+      "name": "silos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "port": {
+          "name": "port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 502
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "register_address": {
+          "name": "register_address",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_type": {
+          "name": "data_type",
+          "type": "silo_register_data_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UINT16'"
+        },
+        "scale": {
+          "name": "scale",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1'"
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'t'"
+        },
+        "low_alarm_percent": {
+          "name": "low_alarm_percent",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "high_alarm_percent": {
+          "name": "high_alarm_percent",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "critical_percent": {
+          "name": "critical_percent",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "current_value": {
+          "name": "current_value",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_read_at": {
+          "name": "last_read_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "silos_page_id_silo_pages_id_fk": {
+          "name": "silos_page_id_silo_pages_id_fk",
+          "tableFrom": "silos",
+          "tableTo": "silo_pages",
+          "columnsFrom": [
+            "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.silo_register_data_type": {
+      "name": "silo_register_data_type",
+      "schema": "public",
+      "values": [
+        "UINT16",
+        "INT16",
+        "UINT32",
+        "INT32",
+        "FLOAT32"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -57,9 +57,12 @@ export const silos = pgTable("silos", {
   unit: text("unit").notNull().default("t"),
 
   // Alarm thresholds, as a fraction of capacity (0-1) — nullable, since not
-  // every silo needs both
+  // every silo needs all three. criticalPercent is the hard floor — the
+  // absolute lowest tolerable level, below lowAlarmPercent — and is what
+  // triggers the red card + sound alert on the dashboard, not just a badge.
   lowAlarmPercent: numeric("low_alarm_percent", { precision: 4, scale: 3 }),
   highAlarmPercent: numeric("high_alarm_percent", { precision: 4, scale: 3 }),
+  criticalPercent: numeric("critical_percent", { precision: 4, scale: 3 }),
 
   isActive: boolean("is_active").notNull().default(true),
 

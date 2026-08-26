@@ -1,0 +1,1 @@
+ALTER TABLE "silos" ADD COLUMN "critical_percent" numeric(4, 3);

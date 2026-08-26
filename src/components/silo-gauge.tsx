@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import type { SiloStatus } from "@/lib/silo-status";
 
-export type SiloGaugeStatus = "ok" | "low" | "high" | "offline";
+export type { SiloStatus } from "@/lib/silo-status";
 
 // Linear percent-to-height mapping over the tank's full silhouette (dome +
 // body + cone). It doesn't model the cone's actual volume — a real silo's
@@ -11,18 +12,32 @@ const TOP_Y = 15;
 const BOTTOM_Y = 155;
 const RANGE = BOTTOM_Y - TOP_Y;
 
-const STATUS_FILL: Record<SiloGaugeStatus, string> = {
+const STATUS_FILL: Record<SiloStatus, string> = {
   ok: "#6366f1", // indigo-500
   low: "#f59e0b", // amber-500
+  critical: "#991b1b", // red-800 — deliberately darker than "high" so the two red states read as distinct severities
   high: "#ef4444", // red-500
   offline: "#94a3b8", // slate-400
 };
 
-const STATUS_BADGE: Record<SiloGaugeStatus, { label: string; className: string }> = {
+const STATUS_BADGE: Record<SiloStatus, { label: string; className: string }> = {
   ok: { label: "OK", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" },
   low: { label: "LOW", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" },
+  critical: { label: "CRITICAL", className: "bg-red-600 text-white dark:bg-red-600 dark:text-white" },
   high: { label: "HIGH", className: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300" },
   offline: { label: "OFFLINE", className: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+};
+
+// Only "critical" gets a distinct card treatment (red background + pulse) —
+// every other status is conveyed through the gauge fill and badge alone, so
+// the card itself stays neutral and this alert reads as unmistakably
+// different rather than one more color in the mix.
+const CARD_BACKGROUND: Record<SiloStatus, string> = {
+  ok: "border-slate-200/80 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950",
+  low: "border-slate-200/80 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950",
+  high: "border-slate-200/80 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950",
+  offline: "border-slate-200/80 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950",
+  critical: "border-red-300 bg-gradient-to-b from-red-50 to-red-100 animate-pulse dark:border-red-800 dark:from-red-950/60 dark:to-red-950/30",
 };
 
 const SILO_OUTLINE = "M 25 15 Q 60 0 95 15 L 95 118 L 60 155 L 25 118 Z";
@@ -43,7 +58,7 @@ export function SiloGauge({
   currentValue: number | null;
   capacity: number;
   unit: string;
-  status: SiloGaugeStatus;
+  status: SiloStatus;
   lastReadAt: Date | null;
 }) {
   const clampedPercent = Math.max(0, Math.min(100, percent));
@@ -52,7 +67,12 @@ export function SiloGauge({
   const badge = STATUS_BADGE[status];
 
   return (
-    <div className="flex flex-col items-center rounded-lg border border-slate-200/80 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+    <div
+      className={cn(
+        "flex flex-col items-center rounded-lg border p-6 shadow-sm shadow-slate-200/60 dark:shadow-slate-950/60",
+        CARD_BACKGROUND[status],
+      )}
+    >
       <svg viewBox="0 0 120 170" className="h-64 w-48">
         <defs>
           <clipPath id={clipId}>

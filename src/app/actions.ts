@@ -109,6 +109,7 @@ const CreateSiloSchema = z.object({
   unit: z.string().trim().min(1).default("t"),
   lowAlarmPercent: z.coerce.number().min(0).max(100).optional(),
   highAlarmPercent: z.coerce.number().min(0).max(100).optional(),
+  criticalPercent: z.coerce.number().min(0).max(100).optional(),
 });
 
 export async function createSiloAction(formData: FormData) {
@@ -125,6 +126,7 @@ export async function createSiloAction(formData: FormData) {
     unit: formData.get("unit") || undefined,
     lowAlarmPercent: formData.get("lowAlarmPercent") || undefined,
     highAlarmPercent: formData.get("highAlarmPercent") || undefined,
+    criticalPercent: formData.get("criticalPercent") || undefined,
   });
 
   if (!parsed.success) {
@@ -144,6 +146,7 @@ export async function createSiloAction(formData: FormData) {
     unit,
     lowAlarmPercent,
     highAlarmPercent,
+    criticalPercent,
   } = parsed.data;
 
   await db.insert(silos).values({
@@ -159,6 +162,7 @@ export async function createSiloAction(formData: FormData) {
     unit,
     lowAlarmPercent: lowAlarmPercent !== undefined ? (lowAlarmPercent / 100).toFixed(3) : null,
     highAlarmPercent: highAlarmPercent !== undefined ? (highAlarmPercent / 100).toFixed(3) : null,
+    criticalPercent: criticalPercent !== undefined ? (criticalPercent / 100).toFixed(3) : null,
   });
 
   revalidatePath("/");
@@ -187,6 +191,7 @@ export async function updateSiloAction(formData: FormData) {
     unit: formData.get("unit") || undefined,
     lowAlarmPercent: formData.get("lowAlarmPercent") || undefined,
     highAlarmPercent: formData.get("highAlarmPercent") || undefined,
+    criticalPercent: formData.get("criticalPercent") || undefined,
   });
 
   if (!parsed.success) {
@@ -206,6 +211,7 @@ export async function updateSiloAction(formData: FormData) {
     unit,
     lowAlarmPercent,
     highAlarmPercent,
+    criticalPercent,
   } = parsed.data;
 
   await db
@@ -223,6 +229,7 @@ export async function updateSiloAction(formData: FormData) {
       unit,
       lowAlarmPercent: lowAlarmPercent !== undefined ? (lowAlarmPercent / 100).toFixed(3) : null,
       highAlarmPercent: highAlarmPercent !== undefined ? (highAlarmPercent / 100).toFixed(3) : null,
+      criticalPercent: criticalPercent !== undefined ? (criticalPercent / 100).toFixed(3) : null,
     })
     .where(eq(silos.id, parsed.data.id));
 

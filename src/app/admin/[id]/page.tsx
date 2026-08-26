@@ -132,7 +132,7 @@ export default async function EditSiloPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="lowAlarmPercent">Low alarm (% of capacity, optional)</Label>
                 <Input
@@ -153,6 +153,17 @@ export default async function EditSiloPage({
                   min={0}
                   max={100}
                   defaultValue={silo.highAlarmPercent !== null ? Number(silo.highAlarmPercent) * 100 : undefined}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="criticalPercent">Critical level (% of capacity, optional)</Label>
+                <Input
+                  id="criticalPercent"
+                  name="criticalPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={silo.criticalPercent !== null ? Number(silo.criticalPercent) * 100 : undefined}
                 />
               </div>
             </div>
