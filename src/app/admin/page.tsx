@@ -15,6 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const DATA_TYPES = ["UINT16", "INT16", "UINT32", "INT32", "FLOAT32"] as const;
 
+// Reads live DB state on every request — must not be statically prerendered
+// at build time (the DB isn't reachable from the build environment anyway).
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage({
   searchParams,
 }: {

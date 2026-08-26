@@ -5,6 +5,10 @@ import { db } from "@/db";
 import { siloPages } from "@/db/schema";
 import { buttonVariants } from "@/components/ui/button";
 
+// Reads live DB state on every request — must not be statically prerendered
+// at build time (the DB isn't reachable from the build environment anyway).
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const [firstPage] = await db
     .select({ slug: siloPages.slug })

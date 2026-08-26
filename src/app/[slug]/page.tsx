@@ -12,6 +12,10 @@ import { SiloGauge, type SiloGaugeStatus } from "@/components/silo-gauge";
 // tune both together if the poll interval changes.
 const STALE_AFTER_MS = 2 * 60 * 1000;
 
+// Reads live DB state on every request — must not be statically prerendered
+// at build time (the DB isn't reachable from the build environment anyway).
+export const dynamic = "force-dynamic";
+
 function statusFor(silo: {
   currentValue: string | null;
   lastReadAt: Date | null;
