@@ -52,8 +52,8 @@ export function SiloGauge({
   const badge = STATUS_BADGE[status];
 
   return (
-    <div className="flex flex-col items-center rounded-lg border border-slate-200/80 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
-      <svg viewBox="0 0 120 170" className="h-40 w-32">
+    <div className="flex flex-col items-center rounded-lg border border-slate-200/80 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+      <svg viewBox="0 0 120 170" className="h-64 w-48">
         <defs>
           <clipPath id={clipId}>
             <path d={SILO_OUTLINE} />
@@ -86,23 +86,23 @@ export function SiloGauge({
           x={60}
           y={90}
           textAnchor="middle"
-          className="fill-slate-900 text-[22px] font-semibold dark:fill-white"
+          className="fill-slate-900 text-[28px] font-semibold dark:fill-white"
           style={{ paintOrder: "stroke", stroke: "white", strokeWidth: 4, strokeOpacity: 0.6 }}
         >
           {Math.round(clampedPercent)}%
         </text>
       </svg>
 
-      <div className="mt-1 text-center">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{name}</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-center">
+        <div className="text-base font-medium text-slate-900 dark:text-slate-100">{name}</div>
+        <div className="text-sm text-slate-500 dark:text-slate-400">
           {currentValue !== null ? `${currentValue.toLocaleString()} / ${capacity.toLocaleString()} ${unit}` : "No data"}
         </div>
-        <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+        <span className={cn("mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium", badge.className)}>
           {badge.label}
         </span>
         {lastReadAt && (
-          <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+          <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
             {new Date(lastReadAt).toLocaleTimeString()}
           </div>
         )}
