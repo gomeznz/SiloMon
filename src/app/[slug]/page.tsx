@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { silos, siloPages, siloReadings } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LiveSiloGrid } from "@/components/live-silo-grid";
@@ -44,6 +45,28 @@ export default async function SiloPageDashboard({
     .where(eq(silos.pageId, currentPage.id))
     .orderBy(asc(silos.sortOrder), asc(silos.id));
 
+  // Worst low/critical alarm per page, for the badge dot on each page tab
+  // below — needs every page's silos, not just the current page's.
+  const allSilos = await db
+    .select({
+      pageId: silos.pageId,
+      currentValue: silos.currentValue,
+      lastReadAt: silos.lastReadAt,
+      capacity: silos.capacity,
+      lowAlarmPercent: silos.lowAlarmPercent,
+      highAlarmPercent: silos.highAlarmPercent,
+      criticalPercent: silos.criticalPercent,
+    })
+    .from(silos);
+
+  const pageAlarms = new Map<number, "critical" | "low">();
+  for (const silo of allSilos) {
+    const { status } = statusFor(silo);
+    if (status !== "critical" && status !== "low") continue;
+    if (pageAlarms.get(silo.pageId) === "critical") continue;
+    pageAlarms.set(silo.pageId, status);
+  }
+
   const siloIds = pageSilos.map((s) => s.id);
   const readings =
     siloIds.length > 0
@@ -80,15 +103,26 @@ export default async function SiloPageDashboard({
 
       {allPages.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {allPages.map((p) => (
-            <Link
-              key={p.id}
-              href={`/${p.slug}`}
-              className={buttonVariants({ variant: p.slug === slug ? "default" : "outline", size: "sm" })}
-            >
-              {p.name}
-            </Link>
-          ))}
+          {allPages.map((p) => {
+            const alarm = pageAlarms.get(p.id);
+            return (
+              <Link
+                key={p.id}
+                href={`/${p.slug}`}
+                className={buttonVariants({ variant: p.slug === slug ? "default" : "outline", size: "sm" })}
+              >
+                {alarm && (
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      alarm === "critical" ? "bg-red-500" : "bg-amber-500",
+                    )}
+                  />
+                )}
+                {p.name}
+              </Link>
+            );
+          })}
         </div>
       )}
 

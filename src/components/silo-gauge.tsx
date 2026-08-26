@@ -15,8 +15,8 @@ const RANGE = BOTTOM_Y - TOP_Y;
 const STATUS_FILL: Record<SiloStatus, string> = {
   ok: "#6366f1", // indigo-500
   low: "#f59e0b", // amber-500
-  critical: "#991b1b", // red-800 — deliberately darker than "high" so the two red states read as distinct severities
-  high: "#ef4444", // red-500
+  critical: "#991b1b", // red-800 — the one alarm color that still means trouble
+  high: "#10b981", // emerald-500 — well-stocked is good news, not a warning
   offline: "#94a3b8", // slate-400
 };
 
@@ -24,7 +24,7 @@ const STATUS_BADGE: Record<SiloStatus, { label: string; className: string }> = {
   ok: { label: "OK", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" },
   low: { label: "LOW", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" },
   critical: { label: "CRITICAL", className: "bg-red-600 text-white dark:bg-red-600 dark:text-white" },
-  high: { label: "HIGH", className: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300" },
+  high: { label: "HIGH", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" },
   offline: { label: "OFFLINE", className: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
 };
 
