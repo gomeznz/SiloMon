@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LockedRowActions } from "@/components/locked-row-actions";
 
 const DATA_TYPES = ["UINT16", "INT16", "UINT32", "INT32", "FLOAT32"] as const;
 
@@ -88,23 +89,11 @@ export default async function AdminPage({
                 <span>
                   {p.name} <span className="text-slate-400">/{p.slug}</span>
                 </span>
-                <div className="flex shrink-0 items-center gap-3">
-                  <Link
-                    href={`/admin/pages/${p.id}`}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
-                  >
-                    Edit
-                  </Link>
-                  <form action={deleteSiloPageAction}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <button
-                      type="submit"
-                      className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
+                <LockedRowActions
+                  editHref={`/admin/pages/${p.id}`}
+                  deleteAction={deleteSiloPageAction}
+                  deleteId={p.id}
+                />
               </div>
             ))}
           </div>
@@ -225,23 +214,7 @@ export default async function AdminPage({
                     · {page?.name ?? "unknown page"} · {s.host}:{s.port} unit {s.unitId} reg {s.registerAddress}
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <Link
-                    href={`/admin/${s.id}`}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
-                  >
-                    Edit
-                  </Link>
-                  <form action={deleteSiloAction}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <button
-                      type="submit"
-                      className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
+                <LockedRowActions editHref={`/admin/${s.id}`} deleteAction={deleteSiloAction} deleteId={s.id} />
               </div>
             );
           })}
