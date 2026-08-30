@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { RegisterAddressField } from "@/components/register-address-field";
 
 const DATA_TYPES = ["UINT16", "INT16", "UINT32", "INT32", "FLOAT32"] as const;
 
@@ -88,16 +89,7 @@ export default async function EditSiloPage({
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="registerAddress">Register address</Label>
-                <Input
-                  id="registerAddress"
-                  name="registerAddress"
-                  type="number"
-                  defaultValue={silo.registerAddress}
-                  required
-                />
-              </div>
+              <RegisterAddressField defaultValue={silo.registerAddress} />
               <div className="space-y-1.5">
                 <Label htmlFor="dataType">Data type</Label>
                 <Select id="dataType" name="dataType" defaultValue={silo.dataType}>

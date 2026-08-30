@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LockedRowActions } from "@/components/locked-row-actions";
+import { RegisterAddressField } from "@/components/register-address-field";
 
 const DATA_TYPES = ["UINT16", "INT16", "UINT32", "INT32", "FLOAT32"] as const;
 
@@ -140,10 +141,7 @@ export default async function AdminPage({
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="registerAddress">Register address</Label>
-                <Input id="registerAddress" name="registerAddress" type="number" required />
-              </div>
+              <RegisterAddressField />
               <div className="space-y-1.5">
                 <Label htmlFor="dataType">Data type</Label>
                 <Select id="dataType" name="dataType" defaultValue="UINT16">
