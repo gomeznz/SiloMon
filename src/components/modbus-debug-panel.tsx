@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ModiconAddressHint } from "@/components/modicon-address-hint";
 
 const DATA_TYPES: SiloDataType[] = ["UINT16", "INT16", "UINT32", "INT32", "FLOAT32"];
 const BAUD_RATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
@@ -83,6 +84,7 @@ export function ModbusTcpDebugPanel() {
             value={registerAddress}
             onChange={(e) => setRegisterAddress(Number(e.target.value))}
           />
+          <ModiconAddressHint value={registerAddress} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="tcp-type">Data type</Label>
@@ -244,6 +246,7 @@ export function ModbusRtuDebugPanel() {
             value={registerAddress}
             onChange={(e) => setRegisterAddress(Number(e.target.value))}
           />
+          <ModiconAddressHint value={registerAddress} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="rtu-type">Data type</Label>
