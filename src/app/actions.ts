@@ -10,7 +10,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { silos, siloPages } from "@/db/schema";
+import { silos, siloPages, appSettings } from "@/db/schema";
 
 function redirectWithError(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -246,6 +246,41 @@ export async function deleteSiloAction(formData: FormData) {
   await db.delete(silos).where(eq(silos.id, id));
 
   revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+const UpdateCentralConfigSchema = z.object({
+  centralDashboardUrl: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^https?:\/\//.test(v), "Enter a full URL (starting with http:// or https://)"),
+  centralApiKey: z.string().trim(),
+});
+
+export async function updateCentralConfigAction(formData: FormData) {
+  const parsed = UpdateCentralConfigSchema.safeParse({
+    centralDashboardUrl: formData.get("centralDashboardUrl") ?? "",
+    centralApiKey: formData.get("centralApiKey") ?? "",
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/admin", parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+
+  // Strip a trailing slash so the worker's `${url}/api/ingest` doesn't end
+  // up with a double slash.
+  const centralDashboardUrl = parsed.data.centralDashboardUrl.replace(/\/+$/, "") || null;
+  const centralApiKey = parsed.data.centralApiKey || null;
+
+  await db
+    .insert(appSettings)
+    .values({ id: 1, centralDashboardUrl, centralApiKey, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: appSettings.id,
+      set: { centralDashboardUrl, centralApiKey, updatedAt: new Date() },
+    });
+
   revalidatePath("/admin");
   redirect("/admin");
 }

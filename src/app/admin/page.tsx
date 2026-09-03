@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { silos, siloPages } from "@/db/schema";
+import { silos, siloPages, appSettings } from "@/db/schema";
 import {
   createSiloPageAction,
   deleteSiloPageAction,
   createSiloAction,
   deleteSiloAction,
+  updateCentralConfigAction,
 } from "../actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,9 +30,10 @@ export default async function AdminPage({
 }) {
   const { error } = await searchParams;
 
-  const [pages, allSilos] = await Promise.all([
+  const [pages, allSilos, [centralConfig]] = await Promise.all([
     db.select().from(siloPages).orderBy(asc(siloPages.sortOrder), asc(siloPages.id)),
     db.select().from(silos).orderBy(asc(silos.pageId), asc(silos.sortOrder), asc(silos.id)),
+    db.select().from(appSettings).where(eq(appSettings.id, 1)).limit(1),
   ]);
 
   return (
@@ -62,6 +64,41 @@ export default async function AdminPage({
           <Link href="/admin/debug" className={buttonVariants({ variant: "outline", size: "sm" })}>
             Open
           </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Central dashboard</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Where this site&apos;s data gets pushed for a SiloCentral aggregated view — copy the URL and API key
+            from that dashboard&apos;s Setup page for this site. Leave blank to disable pushing. Takes effect on
+            the worker&apos;s next push, no restart needed.
+          </p>
+          <form action={updateCentralConfigAction} className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="centralDashboardUrl">Dashboard URL</Label>
+              <Input
+                id="centralDashboardUrl"
+                name="centralDashboardUrl"
+                placeholder="https://your-central-dashboard.example.com"
+                defaultValue={centralConfig?.centralDashboardUrl ?? ""}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="centralApiKey">API key</Label>
+              <Input
+                id="centralApiKey"
+                name="centralApiKey"
+                defaultValue={centralConfig?.centralApiKey ?? ""}
+              />
+            </div>
+            <Button type="submit" className="col-span-2">
+              Save
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
