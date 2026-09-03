@@ -17,9 +17,18 @@ import { eq } from "drizzle-orm";
 import ModbusRTU from "modbus-serial";
 import { silos, siloReadings } from "../src/db/schema";
 import { decodeRegisters, registerLength } from "../src/lib/modbus-codec";
+import { buildSiloReport } from "../src/lib/report";
 
 const POLL_INTERVAL_MS = Number(process.env.SILO_POLL_INTERVAL_MS ?? 10_000);
 const CONNECT_TIMEOUT_MS = Number(process.env.SILO_CONNECT_TIMEOUT_MS ?? 5_000);
+
+// Pushing to a central dashboard is opt-in — only starts if both are set.
+// Separate from REPORTING_API_KEY (src/app/api/report/route.ts): that key
+// protects requests coming IN to this site; CENTRAL_API_KEY is the key this
+// site was issued BY the central dashboard, for requests going OUT to it.
+const CENTRAL_DASHBOARD_URL = process.env.CENTRAL_DASHBOARD_URL;
+const CENTRAL_API_KEY = process.env.CENTRAL_API_KEY;
+const REPORT_PUSH_INTERVAL_MS = Number(process.env.REPORT_PUSH_INTERVAL_MS ?? 60_000);
 
 type SiloRow = typeof silos.$inferSelect;
 
@@ -91,6 +100,22 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function pushReport(db: ReturnType<typeof drizzle>) {
+  try {
+    const report = await buildSiloReport(db);
+    const res = await fetch(`${CENTRAL_DASHBOARD_URL}/api/ingest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${CENTRAL_API_KEY}` },
+      body: JSON.stringify(report),
+    });
+    if (!res.ok) {
+      console.error(`Report push failed: ${res.status} ${await res.text()}`);
+    }
+  } catch (err) {
+    console.error("Report push failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 async function main() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not set");
@@ -99,6 +124,12 @@ async function main() {
   const db = drizzle(queryClient);
 
   console.log(`Silo worker starting — polling every ${POLL_INTERVAL_MS}ms`);
+
+  let pushInterval: ReturnType<typeof setInterval> | null = null;
+  if (CENTRAL_DASHBOARD_URL && CENTRAL_API_KEY) {
+    console.log(`Pushing reports to ${CENTRAL_DASHBOARD_URL} every ${REPORT_PUSH_INTERVAL_MS}ms`);
+    pushInterval = setInterval(() => pushReport(db), REPORT_PUSH_INTERVAL_MS);
+  }
 
   let shuttingDown = false;
   const requestShutdown = () => {
@@ -114,6 +145,7 @@ async function main() {
     await sleep(Math.max(0, POLL_INTERVAL_MS - elapsed));
   }
 
+  if (pushInterval) clearInterval(pushInterval);
   for (const client of clients.values()) client.close(() => {});
   await queryClient.end();
   console.log("Silo worker stopped.");
