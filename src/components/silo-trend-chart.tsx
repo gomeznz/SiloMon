@@ -1,3 +1,5 @@
+import { LocalDateTime } from "@/components/local-date-time";
+
 // Hand-rolled SVG line chart — same approach as silo-gauge.tsx. The data
 // (a handful of series, a few hundred points each at most) doesn't warrant
 // pulling in a charting library.
@@ -92,7 +94,7 @@ export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
             textAnchor="middle"
             className="fill-slate-400 text-[10px] dark:fill-slate-500"
           >
-            {new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <LocalDateTime value={t} mode="shortTime" />
           </text>
         ))}
 

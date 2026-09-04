@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { SiloStatus } from "@/lib/silo-status";
+import { LocalDateTime } from "@/components/local-date-time";
 
 export type { SiloStatus } from "@/lib/silo-status";
 
@@ -123,7 +124,7 @@ export function SiloGauge({
         </span>
         {lastReadAt && (
           <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-            {new Date(lastReadAt).toLocaleTimeString()}
+            <LocalDateTime value={lastReadAt} mode="time" />
           </div>
         )}
       </div>
