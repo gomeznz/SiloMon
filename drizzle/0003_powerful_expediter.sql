@@ -1,0 +1,1 @@
+ALTER TABLE "silos" ADD COLUMN "invert_level" boolean DEFAULT false NOT NULL;

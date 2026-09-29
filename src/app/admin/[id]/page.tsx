@@ -106,6 +106,20 @@ export default async function EditSiloPage({
               </div>
             </div>
 
+            <div className="flex items-start gap-2">
+              <input
+                id="invertLevel"
+                name="invertLevel"
+                type="checkbox"
+                defaultChecked={silo.invertLevel}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700"
+              />
+              <Label htmlFor="invertLevel" className="font-normal">
+                Sensor measures empty space, not product depth (ultrasonic/radar distance sensors — a bigger
+                reading means a more empty silo)
+              </Label>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="capacity">Capacity</Label>

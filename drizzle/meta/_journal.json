@@ -22,6 +22,13 @@
       "when": 1788400815655,
       "tag": "0002_wise_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790719841603,
+      "tag": "0003_powerful_expediter",
+      "breakpoints": true
     }
   ]
 }

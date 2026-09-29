@@ -58,7 +58,12 @@ function readRegisters(address: number, length: number, unitID: number): number[
   if (!silo) return new Array(length).fill(0);
 
   const percent = nextLevelPercent(silo.id);
-  const rawValue = ((percent / 100) * Number(silo.capacity)) / Number(silo.scale);
+  const productValue = (percent / 100) * Number(silo.capacity);
+  // Mirror the worker's invertLevel handling (src/db/schema/silos.ts) so a
+  // test silo with it enabled round-trips correctly: the wire value is the
+  // empty-space reading, not the product amount.
+  const wireValue = silo.invertLevel ? Number(silo.capacity) - productValue : productValue;
+  const rawValue = wireValue / Number(silo.scale);
   const registers = encodeValue(rawValue, silo.dataType);
 
   if (registers.length === length) return registers;

@@ -52,6 +52,13 @@ export const silos = pgTable("silos", {
   dataType: siloRegisterDataTypeEnum("data_type").notNull().default("UINT16"),
   scale: numeric("scale", { precision: 10, scale: 4 }).notNull().default("1"),
 
+  // Some level sensors (ultrasonic/radar) report the empty space between the
+  // sensor and the product surface, not product depth directly — a bigger
+  // reading means a more empty silo. When set, the worker inverts the raw
+  // reading (capacity - reading) before storing/using it, so `capacity`
+  // still means "full" and a higher currentValue still means more product.
+  invertLevel: boolean("invert_level").notNull().default(false),
+
   // Capacity/unit turn a raw register reading into a fill percentage
   capacity: numeric("capacity", { precision: 12, scale: 2 }).notNull(),
   unit: text("unit").notNull().default("t"),

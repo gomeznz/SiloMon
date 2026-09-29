@@ -49,7 +49,12 @@ async function pollSilo(db: ReturnType<typeof drizzle>, silo: SiloRow) {
 
     const length = registerLength(silo.dataType);
     const { data } = await client.readHoldingRegisters(silo.registerAddress, length);
-    const value = decodeRegisters(data, silo.dataType) * Number(silo.scale);
+    const reading = decodeRegisters(data, silo.dataType) * Number(silo.scale);
+    // Some sensors report empty space above the product, not product depth —
+    // see the invertLevel column comment in src/db/schema/silos.ts.
+    const value = silo.invertLevel
+      ? Math.max(0, Math.min(Number(silo.capacity), Number(silo.capacity) - reading))
+      : reading;
 
     await db
       .update(silos)
