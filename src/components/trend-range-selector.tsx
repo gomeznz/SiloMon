@@ -6,7 +6,7 @@ import { TREND_RANGES, type TrendRangeKey } from "@/lib/trend-range";
 // read by the server page, so a chosen range survives a refresh and can be
 // bookmarked or shared. scroll={false} keeps the viewport where it is
 // instead of jumping to the top on every click.
-export function TrendRangeSelector({ slug, active }: { slug: string; active: TrendRangeKey }) {
+export function TrendRangeSelector({ slug, active }: { slug: string; active: TrendRangeKey | null }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {(Object.keys(TREND_RANGES) as TrendRangeKey[]).map((key) => (

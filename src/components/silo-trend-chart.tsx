@@ -41,16 +41,18 @@ export type TrendSeries = {
 export function SiloTrendChart({
   series,
   axisFormat = "shortTime",
+  emptyMessage = "No trend data yet.",
 }: {
   series: TrendSeries[];
   // How x-axis tick labels are written — clock times suit a window of hours,
   // but a week or a year of them would all read "14:00".
   axisFormat?: LocalDateTimeMode;
+  emptyMessage?: string;
 }) {
   const allPoints = series.flatMap((s) => s.points);
 
   if (allPoints.length === 0) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">No trend data yet.</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>;
   }
 
   const times = allPoints.map((p) => p.readAt.getTime());
