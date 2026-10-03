@@ -7,6 +7,7 @@ import {
   boolean,
   timestamp,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const siloRegisterDataTypeEnum = pgEnum("silo_register_data_type", [
@@ -85,11 +86,17 @@ export const silos = pgTable("silos", {
 // Append-only trend history — the worker inserts one row per successful
 // poll. Kept separate from silos' live-state columns so history can grow
 // without bloating the row the dashboard re-reads on every request.
-export const siloReadings = pgTable("silo_readings", {
-  id: serial("id").primaryKey(),
-  siloId: integer("silo_id")
-    .notNull()
-    .references(() => silos.id, { onDelete: "cascade" }),
-  value: numeric("value", { precision: 12, scale: 2 }).notNull(),
-  readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const siloReadings = pgTable(
+  "silo_readings",
+  {
+    id: serial("id").primaryKey(),
+    siloId: integer("silo_id")
+      .notNull()
+      .references(() => silos.id, { onDelete: "cascade" }),
+    value: numeric("value", { precision: 12, scale: 2 }).notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Trend charts filter by silo and a time window; without this, a weekly
+  // or yearly range would scan every reading ever stored.
+  (t) => [index("silo_readings_silo_id_read_at_idx").on(t.siloId, t.readAt)],
+);

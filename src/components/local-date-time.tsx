@@ -11,11 +11,14 @@ import { useEffect, useState } from "react";
 // than showing the wrong time first and correcting itself — this is a
 // deliberate client-only escape hatch, not derived state, hence the
 // disable below.
-type Mode = "datetime" | "time" | "shortTime";
+export type LocalDateTimeMode = "datetime" | "time" | "shortTime" | "shortDate" | "monthYear";
+type Mode = LocalDateTimeMode;
 
 function format(date: Date, mode: Mode): string {
   if (mode === "time") return date.toLocaleTimeString();
   if (mode === "shortTime") return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (mode === "shortDate") return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  if (mode === "monthYear") return date.toLocaleDateString([], { month: "short", year: "2-digit" });
   return date.toLocaleString();
 }
 

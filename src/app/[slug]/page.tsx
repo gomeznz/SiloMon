@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { silos, siloPages, siloReadings } from "@/db/schema";
 import { cn } from "@/lib/utils";
@@ -8,27 +8,28 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LiveSiloGrid } from "@/components/live-silo-grid";
 import { SiloTrendChart } from "@/components/silo-trend-chart";
+import { TrendRangeSelector } from "@/components/trend-range-selector";
 import { statusFor } from "@/lib/silo-status";
-
-// How far back the trend chart looks. Kept short by default since the
-// worker polls every few seconds — a longer window would mean fetching (and
-// rendering) thousands of points per silo.
-const TREND_WINDOW_MS = 3 * 60 * 60 * 1000;
+import { TREND_RANGES, parseTrendRange } from "@/lib/trend-range";
 
 // Reads live DB state on every request — must not be statically prerendered
 // at build time (the DB isn't reachable from the build environment anyway).
 export const dynamic = "force-dynamic";
 
-function trendCutoff(): Date {
-  return new Date(Date.now() - TREND_WINDOW_MS);
+function trendCutoff(windowMs: number): Date {
+  return new Date(Date.now() - windowMs);
 }
 
 export default async function SiloPageDashboard({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ range?: string }>;
 }) {
   const { slug } = await params;
+  const range = parseTrendRange((await searchParams).range);
+  const { windowMs, bucketSeconds, axis } = TREND_RANGES[range];
 
   const [allPages, currentPage] = await Promise.all([
     db.select().from(siloPages).orderBy(asc(siloPages.sortOrder), asc(siloPages.id)),
@@ -68,13 +69,28 @@ export default async function SiloPageDashboard({
   }
 
   const siloIds = pageSilos.map((s) => s.id);
+
+  // Readings are averaged into fixed-width time buckets in SQL rather than
+  // fetched raw: the worker writes one row every ~10s, so a year is millions
+  // of rows per silo. bucketSeconds is inlined (sql.raw) instead of bound as
+  // a parameter because Postgres can't tell that `... / $1` in the SELECT and
+  // `... / $2` in the GROUP BY are the same expression — it comes from the
+  // TREND_RANGES constant, never from the URL, so inlining it is safe.
+  const bucket = sql<number>`floor(extract(epoch from ${siloReadings.readAt}) / ${sql.raw(String(bucketSeconds))})`.mapWith(
+    Number,
+  );
   const readings =
     siloIds.length > 0
       ? await db
-          .select({ siloId: siloReadings.siloId, value: siloReadings.value, readAt: siloReadings.readAt })
+          .select({
+            siloId: siloReadings.siloId,
+            bucket,
+            value: sql<string>`avg(${siloReadings.value})`,
+          })
           .from(siloReadings)
-          .where(and(inArray(siloReadings.siloId, siloIds), gte(siloReadings.readAt, trendCutoff())))
-          .orderBy(asc(siloReadings.readAt))
+          .where(and(inArray(siloReadings.siloId, siloIds), gte(siloReadings.readAt, trendCutoff(windowMs))))
+          .groupBy(siloReadings.siloId, bucket)
+          .orderBy(asc(bucket))
       : [];
 
   const trendSeries = pageSilos.map((silo) => {
@@ -88,7 +104,10 @@ export default async function SiloPageDashboard({
       // aren't on a comparable scale).
       points: readings
         .filter((r) => r.siloId === silo.id)
-        .map((r) => ({ readAt: r.readAt, value: (Number(r.value) / capacity) * 100 })),
+        .map((r) => ({
+          readAt: new Date(r.bucket * bucketSeconds * 1000),
+          value: (Number(r.value) / capacity) * 100,
+        })),
     };
   });
 
@@ -151,11 +170,12 @@ export default async function SiloPageDashboard({
 
       {pageSilos.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>Level trend</CardTitle>
+            <TrendRangeSelector slug={slug} active={range} />
           </CardHeader>
           <CardContent className="pt-4">
-            <SiloTrendChart series={trendSeries} />
+            <SiloTrendChart series={trendSeries} axisFormat={axis} />
           </CardContent>
         </Card>
       )}

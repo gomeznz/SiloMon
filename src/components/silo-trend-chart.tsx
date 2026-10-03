@@ -1,4 +1,4 @@
-import { LocalDateTime } from "@/components/local-date-time";
+import { LocalDateTime, type LocalDateTimeMode } from "@/components/local-date-time";
 
 // Hand-rolled SVG line chart — same approach as silo-gauge.tsx. The data
 // (a handful of series, a few hundred points each at most) doesn't warrant
@@ -38,7 +38,15 @@ export type TrendSeries = {
   points: { readAt: Date; value: number }[];
 };
 
-export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
+export function SiloTrendChart({
+  series,
+  axisFormat = "shortTime",
+}: {
+  series: TrendSeries[];
+  // How x-axis tick labels are written — clock times suit a window of hours,
+  // but a week or a year of them would all read "14:00".
+  axisFormat?: LocalDateTimeMode;
+}) {
   const allPoints = series.flatMap((s) => s.points);
 
   if (allPoints.length === 0) {
@@ -94,7 +102,7 @@ export function SiloTrendChart({ series }: { series: TrendSeries[] }) {
             textAnchor="middle"
             className="fill-slate-400 text-[10px] dark:fill-slate-500"
           >
-            <LocalDateTime value={t} mode="shortTime" />
+            <LocalDateTime value={t} mode={axisFormat} />
           </text>
         ))}
 
