@@ -3,12 +3,13 @@
 SiloMon reads Modbus-TCP registers at a site and turns them into a level report. SiloCentral collects
 those reports from every site into one view. The first three HTTP endpoints below move the same JSON
 document around — out of a site, into a dashboard, or straight into whatever reporting tool you point at
-it. The fourth, `POST /api/heartbeat`, carries no data: it only tells SiloCentral a site is alive.
+it. `POST /api/heartbeat` carries no data of its own: it tells SiloCentral a site is alive, and its reply
+tells the site whether SiloCentral now manages its configuration (see [Remote management](#remote-management)).
 
 | | |
 |---|---|
 | **SiloMon serves** | `GET /api/report`, `GET /api/pages/{slug}` |
-| **SiloCentral serves** | `POST /api/ingest`, `POST /api/heartbeat` |
+| **SiloCentral serves** | `POST /api/ingest`, `POST /api/heartbeat`, `GET /api/config`, `POST /api/config/import`, `POST /api/config/ack` |
 | **Format** | `application/json` |
 
 A Word version of this same reference is at [`api-reference.docx`](./api-reference.docx).
@@ -21,7 +22,7 @@ one site.
 | Key | Header | Notes |
 |---|---|---|
 | **Reporting key** | `Authorization: Bearer <REPORTING_API_KEY>` | Protects requests coming *into* a SiloMon site. Set on that site's own Setup page. Guards `GET /api/report`. |
-| **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest` and `POST /api/heartbeat`. |
+| **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest`, `POST /api/heartbeat` and the three `/api/config` endpoints. |
 | **No key** | — unauthenticated — | `GET /api/pages/{slug}` has none — internal to the dashboard's own live-update polling. See the note on that endpoint before relying on it. |
 
 ## SiloMon — per-site API
@@ -213,15 +214,62 @@ curl -X POST https://central.example.com/api/heartbeat \
 **Response — 200**
 
 ```json
-{ "ok": true }
+{ "ok": true, "managed": false, "configVersion": 0, "wantsImport": false }
 ```
+
+| Field | Meaning |
+|---|---|
+| `ok` | The heartbeat was recorded. |
+| `managed` | `true` once an admin has taken over this site's configuration in SiloCentral. |
+| `configVersion` | The current configuration version (0 if none stored). While managed, the site applies it when it is newer than the one it last applied. |
+| `wantsImport` | `true` when SiloCentral has no configuration for this site yet (or an admin asked for a re-import) and the site should send its own with `POST /api/config/import`. |
+
+Older sites that only look at `ok` keep working; the extra fields are ignored.
 
 **Status codes**
 
 | Code | Meaning |
 |---|---|
-| `200` | `{ "ok": true }` — the site's last-heartbeat time was updated. |
+| `200` | The site's last-heartbeat time was updated; body as above. |
 | `401` | Missing bearer token, or it doesn't match any registered site's key. |
+
+## Remote management
+
+An admin can take over a site's pages and silos in SiloCentral and then add, edit and delete them there —
+every silo field, including the Modbus host, port, unit and register. Nothing is pushed to the Pi: the
+site **pulls**, so it only ever makes outbound requests.
+
+1. The site's heartbeat reply says `wantsImport: true`, and the worker sends its current configuration to
+   `POST /api/config/import`. This is a copy; the site stays in control until an admin takes over.
+2. An admin clicks **Take over** on the site's settings page. From then on `managed` is `true` and the
+   site's own Setup page becomes read-only.
+3. Each change an admin saves bumps `configVersion`. The worker sees the new number in a heartbeat reply,
+   fetches `GET /api/config`, validates it, applies it in one database transaction, and reports the result
+   with `POST /api/config/ack`. If applying fails it retries after 5 minutes and SiloCentral shows the
+   error.
+4. **Release** hands control back; clearing the central URL or key on the site also releases it.
+
+Pages and silos carry a stable `uid`, so a rename is a rename and not a delete plus an add. Alarm levels
+are percentages from 0 to 100 on the wire. Both ends validate the same schema, so an invalid configuration
+cannot be saved or applied.
+
+### `GET /api/config`
+
+**Auth:** Bearer token required (per-site key). Returns the managed configuration:
+`{ "version": 11, "pages": [ ... ], "silos": [ ... ] }`. `404` if the site is not managed.
+
+### `POST /api/config/import`
+
+**Auth:** Bearer token required. Body: the site's configuration (`pages`, `silos`). Accepted only when
+SiloCentral has no configuration for the site or an admin requested a re-import and the site is not
+managed. Responds `{ "ok": true, "version": N }`; `400` for an invalid document, `409` if an import was
+not requested.
+
+### `POST /api/config/ack`
+
+**Auth:** Bearer token required. Body: `{ "version": 11, "ok": true }` or
+`{ "version": 11, "ok": false, "error": "why it failed" }`. Responds `{ "ok": true }`; `400` for an
+unknown version.
 
 ## The report shape
 
