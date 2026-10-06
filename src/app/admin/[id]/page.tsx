@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/db";
+import { isManagedByCentral } from "@/lib/managed";
 import { silos, siloPages } from "@/db/schema";
 import { updateSiloAction } from "../../actions";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -24,6 +25,8 @@ export default async function EditSiloPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
+  // While SiloCentral manages this site these can't be edited here.
+  if (await isManagedByCentral()) redirect("/admin");
   const { id } = await params;
   const { error } = await searchParams;
   const siloId = Number(id);

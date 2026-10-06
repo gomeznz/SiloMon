@@ -18,6 +18,8 @@ import ModbusRTU from "modbus-serial";
 import { silos, siloReadings, appSettings } from "../src/db/schema";
 import { decodeRegisters, registerLength } from "../src/lib/modbus-codec";
 import { buildSiloReport } from "../src/lib/report";
+import { syncRemoteConfig, type SyncState } from "../src/lib/remote-config-sync";
+import type { HeartbeatReply } from "../src/lib/site-config-schema";
 
 const POLL_INTERVAL_MS = Number(process.env.SILO_POLL_INTERVAL_MS ?? 10_000);
 const CONNECT_TIMEOUT_MS = Number(process.env.SILO_CONNECT_TIMEOUT_MS ?? 5_000);
@@ -88,6 +90,16 @@ async function tick(db: ReturnType<typeof drizzle>) {
     byGateway.set(key, [...(byGateway.get(key) ?? []), silo]);
   }
 
+  // A silo's host or port can now be changed remotely (SiloCentral), so close
+  // connections to gateways nothing points at any more instead of holding
+  // them open forever.
+  for (const [key, client] of clients) {
+    if (!byGateway.has(key)) {
+      client.close(() => {});
+      clients.delete(key);
+    }
+  }
+
   // Different gateways poll in parallel; silos sharing one gateway poll
   // sequentially, since a single Modbus-TCP connection handles one
   // request/response conversation at a time.
@@ -138,6 +150,10 @@ async function pushReport(db: ReturnType<typeof drizzle>) {
 // so a failed ping is only logged, never an unhandled rejection that takes
 // the worker down; the timeout stops one hung request from stacking up
 // behind the next.
+// Remembers a configuration version this Pi failed to apply, so it isn't
+// retried every 30 seconds — see RETRY_AFTER_FAILURE_MS in remote-config-sync.
+const configSyncState: SyncState = {};
+
 async function sendHeartbeat(db: ReturnType<typeof drizzle>) {
   try {
     const [settings] = await db.select().from(appSettings).where(eq(appSettings.id, 1)).limit(1);
@@ -150,7 +166,19 @@ async function sendHeartbeat(db: ReturnType<typeof drizzle>) {
     });
     if (!res.ok) {
       console.error(`Heartbeat failed: ${res.status}`);
+      return;
     }
+
+    // The reply also says whether SiloCentral has configuration for this site
+    // to hand over (or wants ours). An old SiloCentral replies with just
+    // { ok: true }, which syncRemoteConfig treats as "nothing to do".
+    const reply = (await res.json().catch(() => ({}))) as Partial<HeartbeatReply>;
+    await syncRemoteConfig(db, {
+      centralUrl: settings.centralDashboardUrl,
+      apiKey: settings.centralApiKey,
+      reply,
+      state: configSyncState,
+    });
   } catch (err) {
     console.error("Heartbeat failed:", err instanceof Error ? err.message : err);
   }

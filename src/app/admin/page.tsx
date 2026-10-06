@@ -36,6 +36,8 @@ export default async function AdminPage({
     db.select().from(appSettings).where(eq(appSettings.id, 1)).limit(1),
   ]);
 
+  const managed = (centralConfig?.remoteConfigVersion ?? 0) > 0;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
       <div className="flex items-start justify-between gap-4">
@@ -52,6 +54,20 @@ export default async function AdminPage({
       </div>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {managed && (
+        <div
+          role="status"
+          className="rounded-md border border-indigo-300 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200"
+        >
+          <p className="font-medium">Managed by SiloCentral (configuration v{centralConfig?.remoteConfigVersion})</p>
+          <p className="mt-1">
+            Pages and silos, including their Modbus settings, are changed in SiloCentral and applied to this site
+            automatically, so they&apos;re read-only here. Clearing the Dashboard URL and API key below detaches this
+            site and turns local editing back on.
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -107,13 +123,15 @@ export default async function AdminPage({
           <CardTitle>Pages</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
-          <form action={createSiloPageAction} className="flex items-end gap-2">
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="page-name">New page name</Label>
-              <Input id="page-name" name="name" placeholder="e.g. North Yard" required />
-            </div>
-            <Button type="submit">Add page</Button>
-          </form>
+          {!managed && (
+            <form action={createSiloPageAction} className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="page-name">New page name</Label>
+                <Input id="page-name" name="name" placeholder="e.g. North Yard" required />
+              </div>
+              <Button type="submit">Add page</Button>
+            </form>
+          )}
 
           <div className="space-y-2">
             {pages.length === 0 && (
@@ -127,17 +145,20 @@ export default async function AdminPage({
                 <span>
                   {p.name} <span className="text-slate-400">/{p.slug}</span>
                 </span>
-                <LockedRowActions
-                  editHref={`/admin/pages/${p.id}`}
-                  deleteAction={deleteSiloPageAction}
-                  deleteId={p.id}
-                />
+                {!managed && (
+                  <LockedRowActions
+                    editHref={`/admin/pages/${p.id}`}
+                    deleteAction={deleteSiloPageAction}
+                    deleteId={p.id}
+                  />
+                )}
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
+      {!managed && (
       <Card>
         <CardHeader>
           <CardTitle>Add a silo</CardTitle>
@@ -240,6 +261,7 @@ export default async function AdminPage({
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -262,7 +284,9 @@ export default async function AdminPage({
                     · {page?.name ?? "unknown page"} · {s.host}:{s.port} unit {s.unitId} reg {s.registerAddress}
                   </span>
                 </div>
-                <LockedRowActions editHref={`/admin/${s.id}`} deleteAction={deleteSiloAction} deleteId={s.id} />
+                {!managed && (
+                  <LockedRowActions editHref={`/admin/${s.id}`} deleteAction={deleteSiloAction} deleteId={s.id} />
+                )}
               </div>
             );
           })}

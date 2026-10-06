@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -23,6 +24,11 @@ export const siloRegisterDataTypeEnum = pgEnum("silo_register_data_type", [
 // silos.sortOrder within a page) the grid order.
 export const siloPages = pgTable("silo_pages", {
   id: serial("id").primaryKey(),
+  // Stable identity for remote configuration (see src/lib/remote-config.ts):
+  // SiloCentral refers to a page by this, not by the local serial id, so a
+  // rename or reorder is recognised as the same page. Existing rows get one
+  // when the migration adds the column.
+  uid: text("uid").notNull().unique().default(sql`gen_random_uuid()::text`),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -39,6 +45,8 @@ export const siloPages = pgTable("silo_pages", {
 // is what the dashboard uses to detect an offline device.
 export const silos = pgTable("silos", {
   id: serial("id").primaryKey(),
+  // Stable identity for remote configuration — see siloPages.uid.
+  uid: text("uid").notNull().unique().default(sql`gen_random_uuid()::text`),
   pageId: integer("page_id")
     .notNull()
     .references(() => siloPages.id, { onDelete: "cascade" }),

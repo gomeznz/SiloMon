@@ -16,6 +16,21 @@ function redirectWithError(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
+// While SiloCentral manages this site, its pages and silos can only be changed
+// there. Hiding the forms on the Setup page isn't enough on its own — a Server
+// Action can be called directly — so every page/silo mutation below starts by
+// checking this.
+async function assertNotManaged(path = "/admin"): Promise<void> {
+  const [row] = await db
+    .select({ v: appSettings.remoteConfigVersion })
+    .from(appSettings)
+    .where(eq(appSettings.id, 1))
+    .limit(1);
+  if ((row?.v ?? 0) > 0) {
+    redirectWithError(path, "This site is managed by SiloCentral — change pages and silos there");
+  }
+}
+
 function slugify(name: string): string {
   return name
     .trim()
@@ -29,6 +44,7 @@ const CreateSiloPageSchema = z.object({
 });
 
 export async function createSiloPageAction(formData: FormData) {
+  await assertNotManaged();
   const parsed = CreateSiloPageSchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
     redirectWithError("/admin", parsed.error.issues[0]?.message ?? "Invalid input");
@@ -57,6 +73,7 @@ const UpdateSiloPageSchema = z.object({
 });
 
 export async function updateSiloPageAction(formData: FormData) {
+  await assertNotManaged();
   const id = formData.get("id");
 
   const parsed = UpdateSiloPageSchema.safeParse({ id, name: formData.get("name") });
@@ -85,6 +102,7 @@ export async function updateSiloPageAction(formData: FormData) {
 }
 
 export async function deleteSiloPageAction(formData: FormData) {
+  await assertNotManaged();
   const { id } = z.object({ id: z.coerce.number().int().positive() }).parse({
     id: formData.get("id"),
   });
@@ -114,6 +132,7 @@ const CreateSiloSchema = z.object({
 });
 
 export async function createSiloAction(formData: FormData) {
+  await assertNotManaged();
   const parsed = CreateSiloSchema.safeParse({
     pageId: formData.get("pageId"),
     name: formData.get("name"),
@@ -179,6 +198,7 @@ const UpdateSiloSchema = CreateSiloSchema.extend({
 });
 
 export async function updateSiloAction(formData: FormData) {
+  await assertNotManaged();
   const id = formData.get("id");
 
   const parsed = UpdateSiloSchema.safeParse({
@@ -246,6 +266,7 @@ export async function updateSiloAction(formData: FormData) {
 }
 
 export async function deleteSiloAction(formData: FormData) {
+  await assertNotManaged();
   const { id } = z.object({ id: z.coerce.number().int().positive() }).parse({
     id: formData.get("id"),
   });
@@ -280,12 +301,24 @@ export async function updateCentralConfigAction(formData: FormData) {
   const centralDashboardUrl = parsed.data.centralDashboardUrl.replace(/\/+$/, "") || null;
   const centralApiKey = parsed.data.centralApiKey || null;
 
+  // Clearing the URL or key detaches this site from SiloCentral, so it also
+  // stops being managed by it: with no way to receive configuration any more,
+  // leaving the local Setup page locked would strand the site with nobody able
+  // to edit its silos. (Pointing it back at SiloCentral later simply re-applies
+  // whatever configuration SiloCentral holds.)
+  const detaching = !centralDashboardUrl || !centralApiKey;
+
   await db
     .insert(appSettings)
     .values({ id: 1, centralDashboardUrl, centralApiKey, updatedAt: new Date() })
     .onConflictDoUpdate({
       target: appSettings.id,
-      set: { centralDashboardUrl, centralApiKey, updatedAt: new Date() },
+      set: {
+        centralDashboardUrl,
+        centralApiKey,
+        ...(detaching ? { remoteConfigVersion: 0 } : {}),
+        updatedAt: new Date(),
+      },
     });
 
   revalidatePath("/admin");
