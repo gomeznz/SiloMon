@@ -1,13 +1,14 @@
 # Silo Telemetry API — Reference
 
 SiloMon reads Modbus-TCP registers at a site and turns them into a level report. SiloCentral collects
-those reports from every site into one view. All three HTTP endpoints below move the same JSON document
-around — out of a site, into a dashboard, or straight into whatever reporting tool you point at it.
+those reports from every site into one view. The first three HTTP endpoints below move the same JSON
+document around — out of a site, into a dashboard, or straight into whatever reporting tool you point at
+it. The fourth, `POST /api/heartbeat`, carries no data: it only tells SiloCentral a site is alive.
 
 | | |
 |---|---|
 | **SiloMon serves** | `GET /api/report`, `GET /api/pages/{slug}` |
-| **SiloCentral serves** | `POST /api/ingest` |
+| **SiloCentral serves** | `POST /api/ingest`, `POST /api/heartbeat` |
 | **Format** | `application/json` |
 
 A Word version of this same reference is at [`api-reference.docx`](./api-reference.docx).
@@ -20,7 +21,7 @@ one site.
 | Key | Header | Notes |
 |---|---|---|
 | **Reporting key** | `Authorization: Bearer <REPORTING_API_KEY>` | Protects requests coming *into* a SiloMon site. Set on that site's own Setup page. Guards `GET /api/report`. |
-| **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest`. |
+| **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest` and `POST /api/heartbeat`. |
 | **No key** | — unauthenticated — | `GET /api/pages/{slug}` has none — internal to the dashboard's own live-update polling. See the note on that endpoint before relying on it. |
 
 ## SiloMon — per-site API
@@ -132,8 +133,8 @@ One dashboard, many sites. Each site's worker pushes here on a timer; nothing pu
 **Auth:** Bearer token required (per-site key)
 
 Accepts one site's report and stores it as that site's current snapshot — the next call simply
-overwrites the last one. SiloCentral keeps no history of its own; each site's own dashboard already
-does that for its own data.
+overwrites the last one. Each silo's percentage is also appended to a trend history, which is what
+SiloCentral's trend charts draw from.
 
 The bearer token doubles as the site identifier: whichever site owns the key is the site that gets
 updated. There's no separate site ID in the request body.
@@ -184,6 +185,42 @@ curl -X POST https://central.example.com/api/ingest \
 |---|---|
 | `200` | `{ "ok": true }` — snapshot stored, `lastReportAt` updated for that site. |
 | `400` | Body doesn't match the report shape below — see `issues` for exactly which field. |
+| `401` | Missing bearer token, or it doesn't match any registered site's key. |
+
+### `POST /api/heartbeat`
+
+**Auth:** Bearer token required (per-site key — the same one as `POST /api/ingest`)
+
+A lightweight "I'm alive" ping. Each site's worker sends one about every 30 seconds so SiloCentral can
+show whether the site is **online**. It has no request body — the bearer token identifies the site — and
+it changes nothing but that site's last-heartbeat time. In particular it does not touch the stored report
+or add trend history, so a site that is alive but has stale data can't make that data look fresh.
+
+SiloCentral stamps the heartbeat with its own clock, not the site's, so a Pi with a drifting clock can't
+appear online or offline by sending the wrong time.
+
+A site's "last seen" time is whichever is newer, its last heartbeat or its last report, and it is shown
+as **offline** after 2 minutes without either. Sites still running an older SiloMon that sends only
+reports stay correct, because their reports arrive often enough to stay inside that window.
+
+**Request**
+
+```bash
+curl -X POST https://central.example.com/api/heartbeat \
+  -H "Authorization: Bearer $CENTRAL_API_KEY"
+```
+
+**Response — 200**
+
+```json
+{ "ok": true }
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | `{ "ok": true }` — the site's last-heartbeat time was updated. |
 | `401` | Missing bearer token, or it doesn't match any registered site's key. |
 
 ## The report shape

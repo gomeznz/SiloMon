@@ -22,6 +22,10 @@ import { buildSiloReport } from "../src/lib/report";
 const POLL_INTERVAL_MS = Number(process.env.SILO_POLL_INTERVAL_MS ?? 10_000);
 const CONNECT_TIMEOUT_MS = Number(process.env.SILO_CONNECT_TIMEOUT_MS ?? 5_000);
 const REPORT_PUSH_INTERVAL_MS = Number(process.env.REPORT_PUSH_INTERVAL_MS ?? 60_000);
+// The central dashboard shows a site as offline after 2 minutes of silence,
+// so this has to stay comfortably under that — 30s leaves room for several
+// missed pings.
+const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS ?? 30_000);
 
 type SiloRow = typeof silos.$inferSelect;
 
@@ -124,6 +128,34 @@ async function pushReport(db: ReturnType<typeof drizzle>) {
   }
 }
 
+// A tiny "I'm alive" ping so the central dashboard can tell an online site
+// from a dead one within a couple of minutes, without sending (or storing)
+// a whole report. Deliberately sent from this worker rather than from the
+// web app: the worker is what polls the PLCs, so it going quiet is exactly
+// the failure worth flagging — and because it first reads its settings from
+// the database, a site whose database is down stops pinging too, which is
+// the right answer for "is this site working". Everything is inside the try
+// so a failed ping is only logged, never an unhandled rejection that takes
+// the worker down; the timeout stops one hung request from stacking up
+// behind the next.
+async function sendHeartbeat(db: ReturnType<typeof drizzle>) {
+  try {
+    const [settings] = await db.select().from(appSettings).where(eq(appSettings.id, 1)).limit(1);
+    if (!settings?.centralDashboardUrl || !settings?.centralApiKey) return;
+
+    const res = await fetch(`${settings.centralDashboardUrl}/api/heartbeat`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${settings.centralApiKey}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.error(`Heartbeat failed: ${res.status}`);
+    }
+  } catch (err) {
+    console.error("Heartbeat failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 async function main() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not set");
@@ -135,7 +167,12 @@ async function main() {
   console.log(
     `Checking for central dashboard config every ${REPORT_PUSH_INTERVAL_MS}ms (set on the Setup page — no-op until configured)`,
   );
+  console.log(`Sending a heartbeat to the central dashboard every ${HEARTBEAT_INTERVAL_MS}ms once configured`);
   const pushInterval = setInterval(() => pushReport(db), REPORT_PUSH_INTERVAL_MS);
+  // First ping straight away, so a restarted site shows online at once
+  // instead of after the first interval.
+  void sendHeartbeat(db);
+  const heartbeatInterval = setInterval(() => sendHeartbeat(db), HEARTBEAT_INTERVAL_MS);
 
   let shuttingDown = false;
   const requestShutdown = () => {
@@ -152,6 +189,7 @@ async function main() {
   }
 
   clearInterval(pushInterval);
+  clearInterval(heartbeatInterval);
   for (const client of clients.values()) client.close(() => {});
   await queryClient.end();
   console.log("Silo worker stopped.");
