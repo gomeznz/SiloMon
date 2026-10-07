@@ -72,6 +72,12 @@ export const silos = pgTable("silos", {
   capacity: numeric("capacity", { precision: 12, scale: 2 }).notNull(),
   unit: text("unit").notNull().default("t"),
 
+  // The manufacturer's stated feed weight when the silo is full, in tonnes —
+  // independent of `capacity`/`unit`, which describe the sensor's reading (mm
+  // of depth, say). Optional: when set, the dashboard shows tonnes of feed
+  // stored (fill percentage x this); when null, only the percentage shows.
+  feedWeightTonnes: numeric("feed_weight_tonnes", { precision: 10, scale: 2 }),
+
   // Alarm thresholds, as a fraction of capacity (0-1) — nullable, since not
   // every silo needs all three. criticalPercent is the hard floor — the
   // absolute lowest tolerable level, below lowAlarmPercent — and is what

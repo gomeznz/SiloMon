@@ -10,7 +10,7 @@ import { LiveSiloGrid } from "@/components/live-silo-grid";
 import { SiloTrendChart } from "@/components/silo-trend-chart";
 import { TrendDateRangeForm } from "@/components/trend-date-range-form";
 import { TrendRangeSelector } from "@/components/trend-range-selector";
-import { statusFor } from "@/lib/silo-status";
+import { feedStoredTonnes, statusFor } from "@/lib/silo-status";
 import {
   TREND_RANGES,
   axisForSpan,
@@ -197,6 +197,7 @@ export default async function SiloPageDashboard({
           slug={slug}
           initialSilos={pageSilos.map((silo) => {
             const { status, percent } = statusFor(silo);
+            const feedWeightTonnes = silo.feedWeightTonnes !== null ? Number(silo.feedWeightTonnes) : null;
             return {
               id: silo.id,
               name: silo.name,
@@ -205,6 +206,8 @@ export default async function SiloPageDashboard({
               currentValue: silo.currentValue ? Number(silo.currentValue) : null,
               capacity: Number(silo.capacity),
               unit: silo.unit,
+              feedWeightTonnes,
+              feedStoredTonnes: feedStoredTonnes(percent, feedWeightTonnes),
               lastReadAt: silo.lastReadAt ? silo.lastReadAt.toISOString() : null,
             };
           })}

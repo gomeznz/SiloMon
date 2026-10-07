@@ -1,0 +1,1 @@
+ALTER TABLE "silos" ADD COLUMN "feed_weight_tonnes" numeric(10, 2);

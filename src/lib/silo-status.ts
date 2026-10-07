@@ -6,6 +6,15 @@ export type SiloStatus = "ok" | "low" | "critical" | "high" | "offline";
 // tune both together if the poll interval changes.
 export const STALE_AFTER_MS = 2 * 60 * 1000;
 
+// Tonnes of feed in the silo: the fill percentage applied to the
+// manufacturer's full-silo feed weight. Null when no feed weight is set. The
+// percentage is clamped to 0-100 because a silo can't hold more than its full
+// weight (a sensor can over-read) or less than nothing.
+export function feedStoredTonnes(percent: number, feedWeightTonnes: number | null): number | null {
+  if (feedWeightTonnes === null) return null;
+  return (Math.max(0, Math.min(100, percent)) / 100) * feedWeightTonnes;
+}
+
 export function statusFor(silo: {
   currentValue: string | null;
   lastReadAt: Date | null;

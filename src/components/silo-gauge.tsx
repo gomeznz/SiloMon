@@ -41,6 +41,11 @@ const CARD_BACKGROUND: Record<SiloStatus, string> = {
   critical: "border-red-300 bg-gradient-to-b from-red-50 to-red-100 animate-pulse dark:border-red-800 dark:from-red-950/60 dark:to-red-950/30",
 };
 
+// Tonnes to one decimal, but whole numbers stay whole ("20 t", not "20.0 t").
+function formatTonnes(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
 const SILO_OUTLINE = "M 25 15 Q 60 0 95 15 L 95 118 L 60 155 L 25 118 Z";
 
 export function SiloGauge({
@@ -50,6 +55,8 @@ export function SiloGauge({
   currentValue,
   capacity,
   unit,
+  feedWeightTonnes,
+  feedStoredTonnes,
   status,
   lastReadAt,
 }: {
@@ -59,6 +66,8 @@ export function SiloGauge({
   currentValue: number | null;
   capacity: number;
   unit: string;
+  feedWeightTonnes: number | null;
+  feedStoredTonnes: number | null;
   status: SiloStatus;
   lastReadAt: Date | null;
 }) {
@@ -119,6 +128,11 @@ export function SiloGauge({
         <div className="text-sm text-slate-500 dark:text-slate-400">
           {currentValue !== null ? `${currentValue.toLocaleString()} / ${capacity.toLocaleString()} ${unit}` : "No data"}
         </div>
+        {feedWeightTonnes !== null && feedStoredTonnes !== null && currentValue !== null && (
+          <div className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            {formatTonnes(feedStoredTonnes)} t <span className="font-normal text-slate-400 dark:text-slate-500">of {formatTonnes(feedWeightTonnes)} t feed</span>
+          </div>
+        )}
         <span className={cn("mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium", badge.className)}>
           {badge.label}
         </span>

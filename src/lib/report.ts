@@ -1,7 +1,7 @@
 import { asc } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { silos, siloPages } from "@/db/schema";
-import { statusFor, type SiloStatus } from "@/lib/silo-status";
+import { feedStoredTonnes, statusFor, type SiloStatus } from "@/lib/silo-status";
 
 // Takes a db instance rather than importing the app's own db/index.ts
 // singleton, so this same report-building logic can run both inside Next
@@ -21,6 +21,8 @@ export type SiloReport = {
       currentValue: number | null;
       capacity: number;
       unit: string;
+      feedWeightTonnes: number | null;
+      feedStoredTonnes: number | null;
       lastReadAt: string | null;
     }[];
   }[];
@@ -44,6 +46,7 @@ export async function buildSiloReport<TSchema extends Record<string, unknown>>(
         .filter((s) => s.pageId === p.id)
         .map((s) => {
           const { status, percent } = statusFor(s);
+          const feedWeightTonnes = s.feedWeightTonnes !== null ? Number(s.feedWeightTonnes) : null;
           return {
             name: s.name,
             status,
@@ -51,6 +54,8 @@ export async function buildSiloReport<TSchema extends Record<string, unknown>>(
             currentValue: s.currentValue ? Number(s.currentValue) : null,
             capacity: Number(s.capacity),
             unit: s.unit,
+            feedWeightTonnes,
+            feedStoredTonnes: feedStoredTonnes(percent, feedWeightTonnes),
             lastReadAt: s.lastReadAt ? s.lastReadAt.toISOString() : null,
           };
         }),

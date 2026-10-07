@@ -13,6 +13,8 @@ export type LiveSilo = {
   currentValue: number | null;
   capacity: number;
   unit: string;
+  feedWeightTonnes: number | null;
+  feedStoredTonnes: number | null;
   lastReadAt: string | null; // ISO string over JSON — see route.ts
 };
 
@@ -71,6 +73,8 @@ export function LiveSiloGrid({ slug, initialSilos }: { slug: string; initialSilo
           currentValue={silo.currentValue}
           capacity={silo.capacity}
           unit={silo.unit}
+          feedWeightTonnes={silo.feedWeightTonnes}
+          feedStoredTonnes={silo.feedStoredTonnes}
           status={silo.status}
           lastReadAt={silo.lastReadAt ? new Date(silo.lastReadAt) : null}
         />

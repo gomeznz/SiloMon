@@ -63,6 +63,10 @@ export const ConfigSiloSchema = z.object({
 
   capacity: z.number().positive("Capacity must be above zero").lt(10_000_000_000),
   unit: z.string().trim().min(1, "Enter a unit").max(20),
+  // Manufacturer's feed weight at full, in tonnes (the sensor `capacity`/`unit`
+  // above describe the reading, not this). Optional, and defaulted so that a
+  // configuration from an older site, which has no such field, still parses.
+  feedWeightTonnes: z.number().positive("Feed weight must be above zero").max(1_000_000).nullable().default(null),
   lowAlarmPercent: alarmPercent,
   highAlarmPercent: alarmPercent,
   criticalPercent: alarmPercent,

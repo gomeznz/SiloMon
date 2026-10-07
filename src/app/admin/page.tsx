@@ -229,7 +229,7 @@ export default async function AdminPage({
               </Label>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="capacity">Capacity</Label>
                 <Input id="capacity" name="capacity" type="number" step="any" required />
@@ -238,7 +238,16 @@ export default async function AdminPage({
                 <Label htmlFor="unit">Unit</Label>
                 <Input id="unit" name="unit" placeholder="t" defaultValue="t" />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="feedWeightTonnes">Feed weight (t, optional)</Label>
+                <Input id="feedWeightTonnes" name="feedWeightTonnes" type="number" step="any" min={0} placeholder="e.g. 20" />
+              </div>
             </div>
+            <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
+              Feed weight is the manufacturer&apos;s stated weight of feed when the silo is full, in tonnes. When set, the
+              dashboard shows how many tonnes are stored. Capacity and unit above describe the sensor reading and are
+              separate.
+            </p>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">

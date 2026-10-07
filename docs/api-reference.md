@@ -66,6 +66,8 @@ curl https://yard.example.com/api/report \
           "currentValue": 49.2,
           "capacity": 80,
           "unit": "t",
+          "feedWeightTonnes": 20,
+          "feedStoredTonnes": 12.3,
           "lastReadAt": "2026-09-03T02:13:58.000Z"
         }
       ]
@@ -112,6 +114,8 @@ curl https://yard.example.com/api/pages/yard-a
       "currentValue": 49.2,
       "capacity": 80,
       "unit": "t",
+      "feedWeightTonnes": 20,
+      "feedStoredTonnes": 12.3,
       "lastReadAt": "2026-09-03T02:13:58.000Z"
     }
   ]
@@ -159,6 +163,8 @@ curl -X POST https://central.example.com/api/ingest \
         "currentValue": 49.2,
         "capacity": 80,
         "unit": "t",
+        "feedWeightTonnes": 20,
+        "feedStoredTonnes": 12.3,
         "lastReadAt": "2026-09-03T02:13:58.000Z"
       }]
     }]
@@ -250,7 +256,8 @@ site **pulls**, so it only ever makes outbound requests.
 4. **Release** hands control back; clearing the central URL or key on the site also releases it.
 
 Pages and silos carry a stable `uid`, so a rename is a rename and not a delete plus an add. Alarm levels
-are percentages from 0 to 100 on the wire. Both ends validate the same schema, so an invalid configuration
+are percentages from 0 to 100 on the wire. A silo's optional `feedWeightTonnes` (tonnes, above zero, or
+`null`) travels with the rest of its settings; a configuration without it is read as `null`. Both ends validate the same schema, so an invalid configuration
 cannot be saved or applied.
 
 ### `GET /api/config`
@@ -297,6 +304,8 @@ silo on each page.
 | `currentValue` | `number \| null` | Last reading in the silo's own unit. `null` if never successfully read. |
 | `capacity` | `number` | Full capacity, same unit as `currentValue`. |
 | `unit` | `string` | e.g. `"t"`. |
+| `feedWeightTonnes` | `number \| null` | The manufacturer's stated weight of feed when the silo is full, in tonnes, as set on the silo's Setup form. `null` when not set. Separate from `capacity`, which describes the sensor reading. Absent from sites running an older SiloMon. |
+| `feedStoredTonnes` | `number \| null` | Tonnes of feed currently stored: `percent` (limited to 0–100) × `feedWeightTonnes` ÷ 100. `null` when no feed weight is set. Absent from sites running an older SiloMon. |
 | `lastReadAt` | `string \| null` | ISO 8601 timestamp of the last successful Modbus read. |
 
 ### Status enum

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { silos, siloPages } from "@/db/schema";
-import { statusFor } from "@/lib/silo-status";
+import { feedStoredTonnes, statusFor } from "@/lib/silo-status";
 
 // Polled client-side (see live-silo-grid.tsx) so the dashboard can react to
 // a silo going critical without a full page reload. Same shared statusFor()
@@ -24,6 +24,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   return NextResponse.json({
     silos: pageSilos.map((silo) => {
       const { status, percent } = statusFor(silo);
+      const feedWeightTonnes = silo.feedWeightTonnes !== null ? Number(silo.feedWeightTonnes) : null;
       return {
         id: silo.id,
         name: silo.name,
@@ -32,6 +33,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
         currentValue: silo.currentValue ? Number(silo.currentValue) : null,
         capacity: Number(silo.capacity),
         unit: silo.unit,
+        feedWeightTonnes,
+        feedStoredTonnes: feedStoredTonnes(percent, feedWeightTonnes),
         lastReadAt: silo.lastReadAt,
       };
     }),
