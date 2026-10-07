@@ -23,3 +23,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Countdown bar on the live silo grid: fills over one polling interval (the
+   duration is set inline) and is restarted by React on every poll. */
+@keyframes poll-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.poll-progress {
+  width: 0%;
+  animation-name: poll-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .poll-progress { animation: none; width: 100%; opacity: 0.4; }
+}

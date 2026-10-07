@@ -25,12 +25,16 @@ const POLL_INTERVAL_MS = 15_000;
 
 export function LiveSiloGrid({ slug, initialSilos }: { slug: string; initialSilos: LiveSilo[] }) {
   const [silos, setSilos] = useState(initialSilos);
+  // Bumped at the start of every poll; used as the progress bar's key so it
+  // restarts in step with the interval.
+  const [cycle, setCycle] = useState(0);
   const previousStatuses = useRef(new Map(initialSilos.map((s) => [s.id, s.status])));
 
   useEffect(() => {
     let cancelled = false;
 
     async function poll() {
+      setCycle((c) => c + 1);
       try {
         const res = await fetch(`/api/pages/${slug}`, { cache: "no-store" });
         if (!res.ok || cancelled) return;
@@ -63,22 +67,37 @@ export function LiveSiloGrid({ slug, initialSilos }: { slug: string; initialSilo
   }, [slug]);
 
   return (
-    <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-      {silos.map((silo) => (
-        <SiloGauge
-          key={silo.id}
-          id={silo.id}
-          name={silo.name}
-          percent={silo.percent}
-          currentValue={silo.currentValue}
-          capacity={silo.capacity}
-          unit={silo.unit}
-          feedWeightTonnes={silo.feedWeightTonnes}
-          feedStoredTonnes={silo.feedStoredTonnes}
-          status={silo.status}
-          lastReadAt={silo.lastReadAt ? new Date(silo.lastReadAt) : null}
-        />
-      ))}
+    <div className="space-y-3">
+      <div
+        className="ml-auto flex w-44 items-center gap-2 text-xs text-slate-400 dark:text-slate-500"
+        title={`The levels refresh every ${POLL_INTERVAL_MS / 1000} seconds`}
+      >
+        <span className="whitespace-nowrap">Live · every {POLL_INTERVAL_MS / 1000}s</span>
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" aria-hidden="true">
+          <div
+            key={cycle}
+            className="poll-progress h-full rounded-full bg-indigo-500 dark:bg-indigo-400"
+            style={{ animationDuration: `${POLL_INTERVAL_MS}ms` }}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+        {silos.map((silo) => (
+          <SiloGauge
+            key={silo.id}
+            id={silo.id}
+            name={silo.name}
+            percent={silo.percent}
+            currentValue={silo.currentValue}
+            capacity={silo.capacity}
+            unit={silo.unit}
+            feedWeightTonnes={silo.feedWeightTonnes}
+            feedStoredTonnes={silo.feedStoredTonnes}
+            status={silo.status}
+            lastReadAt={silo.lastReadAt ? new Date(silo.lastReadAt) : null}
+          />
+        ))}
+      </div>
     </div>
   );
 }
