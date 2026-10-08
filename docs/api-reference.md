@@ -21,7 +21,7 @@ one site.
 
 | Key | Header | Notes |
 |---|---|---|
-| **Reporting key** | `Authorization: Bearer <REPORTING_API_KEY>` | Protects requests coming *into* a SiloMon site. Set on that site's own Setup page. Guards `GET /api/report`. |
+| **Reporting key** | `Authorization: Bearer <REPORTING_API_KEY>` | Protects requests coming *into* a SiloMon site. You choose it and set it as the `REPORTING_API_KEY` environment variable on that site's dashboard (the `.env` file on a Pi, the service variables on Railway), then restart the dashboard. It isn't on the Setup page. Guards `GET /api/report`. |
 | **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest`, `POST /api/heartbeat` and the three `/api/config` endpoints. |
 | **No key** | — unauthenticated — | `GET /api/pages/{slug}` has none — internal to the dashboard's own live-update polling. See the note on that endpoint before relying on it. |
 
