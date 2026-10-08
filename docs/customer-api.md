@@ -1,6 +1,7 @@
 # SiloCentral Reporting API
 
-Read-only access to silo levels, current and historic, over HTTPS. It is for another system to pull
+Read-only access to silo levels, current and historic, over HTTPS. (A machine-readable OpenAPI description is in
+`silocentral-openapi.yaml`.) It is for another system to pull
 data on a schedule. Everything is `GET`, nothing you send can change anything, and a key can read only the
 sites it was issued for.
 

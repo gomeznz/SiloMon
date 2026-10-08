@@ -13,7 +13,9 @@ tells the site whether SiloCentral now manages its configuration (see [Remote ma
 | **SiloCentral serves to outside readers** | `GET /api/v1/sites`, `GET /api/v1/levels`, `GET /api/v1/history` — see [`customer-api.md`](./customer-api.md) |
 | **Format** | `application/json` |
 
-A Word version of this same reference is at [`api-reference.docx`](./api-reference.docx).
+A Word version of this same reference is at [`api-reference.docx`](./api-reference.docx). Everything SiloCentral
+serves, gathered by caller, is in [`silocentral-api.md`](./silocentral-api.md), with an OpenAPI description in
+[`silocentral-openapi.yaml`](./silocentral-openapi.yaml).
 
 ## Auth, at a glance
 

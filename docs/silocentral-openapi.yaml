@@ -1,0 +1,597 @@
+openapi: 3.0.3
+info:
+  title: SiloCentral API
+  version: "1.0.0"
+  description: |
+    Everything SiloCentral serves over HTTP, for programs.
+
+    * **Reporting API** (`/api/v1/*`): read-only access to silo levels, current and historic, for customers and
+      their systems. Authenticated with a per-customer key.
+    * **Site API** (`/api/ingest`, `/api/heartbeat`, `/api/config*`): called by SiloMon sites to send data and
+      receive configuration. Authenticated with a per-site key. A site only ever makes outbound requests;
+      SiloCentral never connects to one.
+
+    Timestamps are ISO 8601 in UTC. Errors are `{ "error": "message" }`.
+
+    The two dashboard download endpoints (`/api/export/*`) use a signed-in browser session and are not part of
+    this specification.
+
+    Fuller prose, with examples and background, is in `silocentral-api.md`.
+servers:
+  - url: https://{host}
+    description: Your SiloCentral address
+    variables:
+      host:
+        default: your-silocentral-address
+tags:
+  - name: Reporting
+    description: Read-only data for customers. Needs a customer key.
+  - name: Site
+    description: Used by SiloMon nodes. Needs that site's key.
+
+paths:
+  /api/v1/sites:
+    get:
+      tags: [Reporting]
+      operationId: listSites
+      summary: The sites this key can read
+      description: Light enough to poll. Includes whether each site is online (in contact within the last 2 minutes).
+      security: [{ customerKey: [] }]
+      responses:
+        "200":
+          description: The sites.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generatedAt, sites]
+                properties:
+                  generatedAt: { type: string, format: date-time }
+                  sites:
+                    type: array
+                    items: { $ref: "#/components/schemas/SiteSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/levels:
+    get:
+      tags: [Reporting]
+      operationId: getLevels
+      summary: Current level of every silo
+      description: |
+        The most recent reading of every silo on the sites this key can read. Sites report about once a minute,
+        so there is no benefit in calling this more often.
+      security: [{ customerKey: [] }]
+      parameters:
+        - name: site
+          in: query
+          description: A site slug, to get just that site.
+          schema: { type: string }
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200":
+          description: Current levels.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generatedAt, sites]
+                properties:
+                  generatedAt: { type: string, format: date-time }
+                  sites:
+                    type: array
+                    items: { $ref: "#/components/schemas/SiteLevels" }
+            text/csv:
+              schema: { type: string }
+              example: |
+                site,site_online,site_last_seen_at,page,silo,status,percent,current_value,capacity,unit,feed_weight_tonnes,feed_stored_tonnes,last_read_at
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/history:
+    get:
+      tags: [Reporting]
+      operationId: getHistory
+      summary: Past fill levels
+      description: |
+        Fill levels (and tonnes of feed where a feed weight is set) over time, grouped by site and silo.
+
+        The readings inside each interval are averaged into one point; `t` is the start of the interval.
+        `raw` returns every stored reading (about one a minute). Intervals with no readings have no point.
+
+        A range can be at most 366 days, and a response at most 50,000 data points. A request that would
+        return more gets `422` with `code: too_many_rows`.
+
+        History stores the fill percentage. `feedStoredTonnes` uses the silo's current feed weight.
+      security: [{ customerKey: [] }]
+      parameters:
+        - name: from
+          in: query
+          description: |
+            Start of the range, inclusive. A date (`2026-09-01`, the whole UTC day) or an ISO 8601 date-time
+            (`2026-09-01T08:30:00Z`; with no zone it is read as UTC). Default: 24 hours before `to`.
+          schema: { type: string, example: "2026-09-01" }
+        - name: to
+          in: query
+          description: |
+            End of the range. A date includes that whole UTC day; a date-time is exclusive. Default: now.
+          schema: { type: string, example: "2026-09-14" }
+        - name: interval
+          in: query
+          description: Width of each averaged point.
+          schema:
+            type: string
+            enum: [raw, 5m, 15m, 1h, 1d]
+            default: 1h
+        - name: site
+          in: query
+          description: A site slug.
+          schema: { type: string }
+        - name: page
+          in: query
+          description: A page slug, as returned by `/api/v1/levels`.
+          schema: { type: string }
+        - name: silo
+          in: query
+          description: A silo name, matched exactly.
+          schema: { type: string }
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200":
+          description: History.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generatedAt, from, to, interval, sites]
+                properties:
+                  generatedAt: { type: string, format: date-time }
+                  from: { type: string, format: date-time }
+                  to: { type: string, format: date-time }
+                  interval:
+                    type: string
+                    enum: [raw, 5m, 15m, 1h, 1d]
+                  sites:
+                    type: array
+                    items: { $ref: "#/components/schemas/HistorySite" }
+            text/csv:
+              schema: { type: string }
+              example: |
+                site,page,silo,timestamp,percent,feed_stored_tonnes
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: The request would return more than 50,000 data points.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, code]
+                properties:
+                  error: { type: string }
+                  code: { type: string, enum: [too_many_rows] }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/ingest:
+    post:
+      tags: [Site]
+      operationId: ingestReport
+      summary: Send the site's current silo report
+      description: |
+        Replaces the site's latest report and adds one trend point per silo (keyed by page slug and silo name).
+        A site sends one about once a minute. Fields not listed are ignored.
+      security: [{ siteKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteReport" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400":
+          description: The body does not match the report shape; `issues` lists which fields.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: Invalid report payload }
+                  issues: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/SiteUnauthorized" }
+
+  /api/heartbeat:
+    post:
+      tags: [Site]
+      operationId: heartbeat
+      summary: "\"I am alive\" ping, with configuration instructions in the reply"
+      description: |
+        Sent about every 30 seconds, with no body. Recorded with SiloCentral's own clock. Updates only the site's
+        last-contact time. The reply tells the site whether its configuration is managed here and whether to send
+        its own up. A SiloMon that predates remote management reads only `ok`.
+      security: [{ siteKey: [] }]
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HeartbeatReply" }
+        "401": { $ref: "#/components/responses/SiteUnauthorized" }
+
+  /api/config:
+    get:
+      tags: [Site]
+      operationId: getConfig
+      summary: The managed configuration
+      description: Only available once an admin has taken over management of the site.
+      security: [{ siteKey: [] }]
+      responses:
+        "200":
+          description: The configuration and its version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteConfig" }
+        "401": { $ref: "#/components/responses/SiteUnauthorized" }
+        "404":
+          description: The site is not managed by SiloCentral.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/config/import:
+    post:
+      tags: [Site]
+      operationId: importConfig
+      summary: Send the site's own pages and silos up
+      description: |
+        Accepted only when SiloCentral holds no configuration for the site yet, or an admin asked for a fresh copy
+        and the site is not managed (see `wantsImport` in the heartbeat reply). Otherwise `409`.
+      security: [{ siteKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteConfigContent" }
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, version]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  version: { type: integer, minimum: 1 }
+        "400":
+          description: The document breaks a rule (see the schema).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: Invalid configuration }
+                  detail: { type: string }
+        "401": { $ref: "#/components/responses/SiteUnauthorized" }
+        "409":
+          description: An import was not requested.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/config/ack:
+    post:
+      tags: [Site]
+      operationId: acknowledgeConfig
+      summary: Report whether a configuration version was applied
+      security: [{ siteKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, ok]
+              properties:
+                version: { type: integer, minimum: 1, description: No higher than the current version. }
+                ok: { type: boolean }
+                error:
+                  type: string
+                  maxLength: 1000
+                  description: Shown to the admin when `ok` is false.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400":
+          description: Not a valid acknowledgement, or a version that was never issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/SiteUnauthorized" }
+
+components:
+  securitySchemes:
+    customerKey:
+      type: http
+      scheme: bearer
+      description: A per-customer key (`sck_...`), made by an admin under Setup, Customers & API. Read-only.
+    siteKey:
+      type: http
+      scheme: bearer
+      description: A per-site key, shown on the site's edit page in SiloCentral Setup.
+
+  parameters:
+    Format:
+      name: format
+      in: query
+      description: Response format.
+      schema:
+        type: string
+        enum: [json, csv]
+        default: json
+
+  responses:
+    Ok:
+      description: Done.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok: { type: boolean, enum: [true] }
+    BadRequest:
+      description: A parameter is invalid; the message says which.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or unrecognised customer key.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: Bearer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    SiteUnauthorized:
+      description: Missing or unrecognised site key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such site, or not one this key may read (the two are indistinguishable).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: More than 120 requests in a minute.
+      headers:
+        Retry-After:
+          description: Seconds to wait.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    SiloStatus:
+      type: string
+      description: |
+        `critical` and `low` are at or below the silo's alarm thresholds; `high` is at or above its high threshold;
+        `offline` means the silo's sensor has not answered for over 2 minutes (not that the site is offline).
+      enum: [ok, low, critical, high, offline]
+
+    SiteSummary:
+      type: object
+      required: [slug, name, online, lastSeenAt]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        online: { type: boolean, description: In contact within the last 2 minutes. }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+
+    SiloLevel:
+      type: object
+      required: [name, status, percent, currentValue, capacity, unit, feedWeightTonnes, feedStoredTonnes, lastReadAt]
+      properties:
+        name: { type: string }
+        status: { $ref: "#/components/schemas/SiloStatus" }
+        percent: { type: number, minimum: 0, maximum: 100, description: How full the silo is. }
+        currentValue: { type: number, nullable: true, description: Raw reading in the silo's own unit. }
+        capacity: { type: number, description: "The full reading, same unit as currentValue." }
+        unit: { type: string, example: t }
+        feedWeightTonnes:
+          type: number
+          nullable: true
+          description: The manufacturer's stated weight of feed when the silo is full, in tonnes.
+        feedStoredTonnes:
+          type: number
+          nullable: true
+          description: Tonnes of feed now, `percent` (limited to 0-100) of `feedWeightTonnes`; null if no feed weight.
+        lastReadAt: { type: string, format: date-time, nullable: true }
+
+    SiteLevels:
+      allOf:
+        - $ref: "#/components/schemas/SiteSummary"
+        - type: object
+          required: [reportedAt, pages]
+          properties:
+            reportedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: When the site built the report these levels come from.
+            pages:
+              type: array
+              items:
+                type: object
+                required: [name, slug, silos]
+                properties:
+                  name: { type: string }
+                  slug: { type: string }
+                  silos:
+                    type: array
+                    items: { $ref: "#/components/schemas/SiloLevel" }
+
+    HistoryPoint:
+      type: object
+      required: [t, percent, feedStoredTonnes]
+      properties:
+        t: { type: string, format: date-time, description: Start of the interval (UTC). }
+        percent: { type: number }
+        feedStoredTonnes:
+          type: number
+          nullable: true
+          description: Worked out from the silo's current feed weight.
+
+    HistorySite:
+      type: object
+      required: [slug, name, silos]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        silos:
+          type: array
+          items:
+            type: object
+            required: [page, name, unit, feedWeightTonnes, points]
+            properties:
+              page: { type: string, description: Page slug. }
+              name: { type: string }
+              unit: { type: string, nullable: true }
+              feedWeightTonnes: { type: number, nullable: true }
+              points:
+                type: array
+                items: { $ref: "#/components/schemas/HistoryPoint" }
+
+    SiteReport:
+      type: object
+      required: [site, generatedAt, pages]
+      properties:
+        site: { type: string, description: The site's own name for itself. }
+        generatedAt: { type: string }
+        pages:
+          type: array
+          items:
+            type: object
+            required: [name, slug, silos]
+            properties:
+              name: { type: string }
+              slug: { type: string }
+              silos:
+                type: array
+                items:
+                  type: object
+                  required: [name, status, percent, currentValue, capacity, unit, lastReadAt]
+                  properties:
+                    name: { type: string }
+                    status: { $ref: "#/components/schemas/SiloStatus" }
+                    percent: { type: number }
+                    currentValue: { type: number, nullable: true }
+                    capacity: { type: number }
+                    unit: { type: string }
+                    feedWeightTonnes: { type: number, nullable: true }
+                    feedStoredTonnes: { type: number, nullable: true }
+                    lastReadAt: { type: string, nullable: true }
+
+    HeartbeatReply:
+      type: object
+      required: [ok, managed, configVersion, wantsImport]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        managed: { type: boolean, description: An admin has taken over this site's configuration. }
+        configVersion: { type: integer, minimum: 0, description: The current version; 0 if none is held. }
+        wantsImport:
+          type: boolean
+          description: SiloCentral wants the site to send its configuration (POST /api/config/import).
+
+    ConfigPage:
+      type: object
+      required: [uid, name, slug, sortOrder]
+      properties:
+        uid: { $ref: "#/components/schemas/Uid" }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          description: Lowercase letters, digits and single dashes; unique.
+        sortOrder: { type: integer, minimum: 0, maximum: 100000 }
+
+    Uid:
+      type: string
+      minLength: 8
+      maxLength: 64
+      pattern: '^[A-Za-z0-9-]+$'
+      description: An opaque, stable id; unique within the document.
+
+    ConfigSilo:
+      type: object
+      required:
+        [uid, pageUid, name, sortOrder, host, port, unitId, registerAddress, dataType, scale, invertLevel, capacity,
+         unit, lowAlarmPercent, highAlarmPercent, criticalPercent, isActive]
+      properties:
+        uid: { $ref: "#/components/schemas/Uid" }
+        pageUid: { $ref: "#/components/schemas/Uid" }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        sortOrder: { type: integer, minimum: 0, maximum: 100000 }
+        host:
+          type: string
+          minLength: 1
+          maxLength: 253
+          pattern: '^[A-Za-z0-9._:-]+$'
+          description: Modbus gateway host or IP.
+        port: { type: integer, minimum: 1, maximum: 65535 }
+        unitId: { type: integer, minimum: 0, maximum: 255 }
+        registerAddress:
+          type: integer
+          minimum: 0
+          maximum: 65535
+          description: The protocol (0-based) address, not a 4xxxx Modicon number (subtract 40001).
+        dataType: { type: string, enum: [UINT16, INT16, UINT32, INT32, FLOAT32] }
+        scale: { type: number, description: "Multiplier on the raw reading. Non-zero, under 1,000,000 in size." }
+        invertLevel: { type: boolean, description: "The sensor reports empty space, not product depth." }
+        capacity: { type: number, exclusiveMinimum: true, minimum: 0, exclusiveMaximum: true, maximum: 10000000000 }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        feedWeightTonnes:
+          type: number
+          nullable: true
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 1000000
+          default: null
+          description: Manufacturer's feed weight when full, in tonnes. Optional.
+        lowAlarmPercent: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        highAlarmPercent: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        criticalPercent: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        isActive: { type: boolean, description: "false stops polling the silo without deleting it." }
+
+    SiteConfigContent:
+      type: object
+      required: [pages, silos]
+      description: At most 100 pages and 500 silos; every `silos[].pageUid` must match a page.
+      properties:
+        pages:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ConfigPage" }
+        silos:
+          type: array
+          maxItems: 500
+          items: { $ref: "#/components/schemas/ConfigSilo" }
+
+    SiteConfig:
+      allOf:
+        - $ref: "#/components/schemas/SiteConfigContent"
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 1 }
