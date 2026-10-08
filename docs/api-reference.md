@@ -10,19 +10,21 @@ tells the site whether SiloCentral now manages its configuration (see [Remote ma
 |---|---|
 | **SiloMon serves** | `GET /api/report`, `GET /api/pages/{slug}` |
 | **SiloCentral serves** | `POST /api/ingest`, `POST /api/heartbeat`, `GET /api/config`, `POST /api/config/import`, `POST /api/config/ack` |
+| **SiloCentral serves to outside readers** | `GET /api/v1/sites`, `GET /api/v1/levels`, `GET /api/v1/history` — see [`customer-api.md`](./customer-api.md) |
 | **Format** | `application/json` |
 
 A Word version of this same reference is at [`api-reference.docx`](./api-reference.docx).
 
 ## Auth, at a glance
 
-Two separate keys, two separate directions. Neither is a shared master key — losing one exposes exactly
-one site.
+Separate keys for separate jobs. None of them is a shared master key: a reporting key or a site key
+exposes one site, and a customer key exposes only the sites its customer was granted.
 
 | Key | Header | Notes |
 |---|---|---|
 | **Reporting key** | `Authorization: Bearer <REPORTING_API_KEY>` | Protects requests coming *into* a SiloMon site. You choose it and set it as the `REPORTING_API_KEY` environment variable on that site's dashboard (the `.env` file on a Pi, the service variables on Railway), then restart the dashboard. It isn't on the Setup page. Guards `GET /api/report`. |
 | **Central API key** | `Authorization: Bearer <site's key>` | Issued per-site by SiloCentral, pasted into that site's Setup page. Sent *out* by the worker. Guards `POST /api/ingest`, `POST /api/heartbeat` and the three `/api/config` endpoints. |
+| **Customer key** | `Authorization: Bearer sck_...` | One per customer, made by an admin on SiloCentral's Customers & API page and shown once. Gives read-only access to the sites that customer was granted. Guards `/api/v1/*`, which is documented separately in [`customer-api.md`](./customer-api.md). |
 | **No key** | — unauthenticated — | `GET /api/pages/{slug}` has none — internal to the dashboard's own live-update polling. See the note on that endpoint before relying on it. |
 
 ## SiloMon — per-site API
