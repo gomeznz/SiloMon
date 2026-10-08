@@ -347,7 +347,12 @@ Used by `GET /api/config` (with a `version` added) and `POST /api/config/import`
 ```json
 {
   "pages": [
-    { "uid": "5b1e1c9a-0f3a-4c5e-9c1d-2f8d6c1a7b10", "name": "Yard A", "slug": "yard-a", "sortOrder": 0 }
+    {
+      "uid": "5b1e1c9a-0f3a-4c5e-9c1d-2f8d6c1a7b10",
+      "name": "Yard A",
+      "slug": "yard-a",
+      "sortOrder": 0
+    }
   ],
   "silos": [
     {
